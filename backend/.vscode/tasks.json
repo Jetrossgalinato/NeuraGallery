@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start FastAPI Backend",
+			"type": "shell",
+			"command": "source venv/bin/activate && uvicorn main:app --reload",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
