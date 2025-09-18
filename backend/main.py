@@ -20,6 +20,14 @@ app.add_middleware(
 def read_root():
     return {"message": "NeuraGallery FastAPI backend running!"}
 
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy", 
+        "opencv_version": cv2.__version__,
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.post("/process-image/")
 async def upload_image(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
@@ -50,3 +58,6 @@ async def upload_image(file: UploadFile = File(...)):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
