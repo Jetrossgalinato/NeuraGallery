@@ -1,20 +1,59 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const path = require("path");
 
+let mainWindow;
+
 function createWindow() {
-  const win = new BrowserWindow({
-    width: 1000,
-    height: 700,
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, "src", "preload.js"),
     },
   });
-  win.loadFile("index.html");
+
+  mainWindow.loadFile(path.join(__dirname, "src", "index.html"));
+
+  if (process.argv.includes("--dev")) {
+    mainWindow.webContents.openDevTools();
+  }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
+
+// Handle file selection dialog
+ipcMain.handle("select-file", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openFile"],
+    filters: [
+      { name: "Images", extensions: ["jpg", "jpeg", "png", "bmp", "tiff"] },
+    ],
+  });
+
+  return result;
+});
+
+// Handle save dialog
+ipcMain.handle("save-file", async () => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    filters: [{ name: "Images", extensions: ["jpg", "png"] }],
+  });
+
+  return result;
 });
