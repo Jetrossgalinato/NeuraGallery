@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 class UserCreate(BaseModel):
     username: str
@@ -21,3 +22,11 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+class ImageResponse(BaseModel):
+    id: int
+    filename: str
+    original_filename: str
+    file_size: int
+    mime_type: str
+    uploaded_at: datetime

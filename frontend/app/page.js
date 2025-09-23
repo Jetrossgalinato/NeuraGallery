@@ -4,10 +4,18 @@ import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import LoginForm from "../components/LoginForm";
 import RegisterForm from "../components/RegisterForm";
+import ImageUpload from "../components/ImageUpload";
+import ImageGallery from "../components/ImageGallery";
 
 export default function Home() {
   const { user, loading, logout } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
+  const [refreshGallery, setRefreshGallery] = useState(0);
+
+  const handleUploadSuccess = () => {
+    // Trigger gallery refresh
+    setRefreshGallery((prev) => prev + 1);
+  };
 
   if (loading) {
     return (
@@ -103,15 +111,21 @@ export default function Home() {
           backgroundColor: "#f8f9fa",
           borderRadius: 8,
           border: "1px solid #dee2e6",
+          marginBottom: 30,
         }}
       >
-        <h3>Image Processing Features (Coming Soon)</h3>
-        <ul>
-          <li>Upload and process images with OpenCV</li>
-          <li>Apply filters and transformations</li>
-          <li>Batch processing capabilities</li>
-          <li>Export results in multiple formats</li>
-        </ul>
+        <ImageUpload onUploadSuccess={handleUploadSuccess} />
+      </div>
+
+      <div
+        style={{
+          padding: 20,
+          backgroundColor: "#f8f9fa",
+          borderRadius: 8,
+          border: "1px solid #dee2e6",
+        }}
+      >
+        <ImageGallery refreshTrigger={refreshGallery} />
       </div>
     </main>
   );

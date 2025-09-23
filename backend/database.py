@@ -1,7 +1,11 @@
 import os
+from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from contextlib import contextmanager
+
+# Load environment variables
+load_dotenv()
 
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "admin")
@@ -21,6 +25,18 @@ def init_database():
             email VARCHAR(100) UNIQUE NOT NULL,
             hashed_password VARCHAR(200) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS images (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            filename VARCHAR(255) NOT NULL,
+            original_filename VARCHAR(255) NOT NULL,
+            file_path VARCHAR(500) NOT NULL,
+            file_size INTEGER NOT NULL,
+            mime_type VARCHAR(100) NOT NULL,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()
@@ -62,3 +78,24 @@ def get_user_by_email(email: str):
         user = cur.fetchone()
         cur.close()
         return user
+
+def create_image(user_id: int, filename: str, original_filename: str, file_path: str, file_size: int, mime_type: str):
+    with get_db_connection() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """INSERT INTO images (user_id, filename, original_filename, file_path, file_size, mime_type) 
+               VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
+            (user_id, filename, original_filename, file_path, file_size, mime_type)
+        )
+        image_id = cur.fetchone()["id"]
+        conn.commit()
+        cur.close()
+        return image_id
+
+def get_user_images(user_id: int):
+    with get_db_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM images WHERE user_id = %s ORDER BY uploaded_at DESC", (user_id,))
+        images = cur.fetchall()
+        cur.close()
+        return images

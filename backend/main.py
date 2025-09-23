@@ -1,7 +1,8 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.staticfiles import StaticFiles
 import cv2
 import numpy as np
 import os
@@ -11,11 +12,14 @@ from datetime import datetime, timedelta
 from auth import (
     register_user, authenticate_user, create_access_token, verify_token, ACCESS_TOKEN_EXPIRE_MINUTES
 )
-from database import init_database, get_user_by_username
-from models import UserCreate, UserLogin, Token, User
+from database import init_database, get_user_by_username, create_image, get_user_images
+from models import UserCreate, UserLogin, Token, User, ImageResponse
 
 
 app = FastAPI()
+
+# Mount static files for serving uploaded images
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Initialize PostgreSQL database on startup
 @app.on_event("startup")
@@ -94,6 +98,60 @@ async def health_check():
         "opencv_version": cv2.__version__,
         "timestamp": datetime.now().isoformat()
     }
+
+@app.post("/upload-image", response_model=ImageResponse)
+async def upload_image(file: UploadFile = File(...), current_user = Depends(get_current_user)):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    try:
+        # Generate unique filename
+        import uuid
+        file_extension = file.filename.split('.')[-1]
+        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        file_path = os.path.join("uploads", unique_filename)
+        
+        # Save file to disk
+        contents = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        
+        # Store image info in database
+        image_id = create_image(
+            user_id=current_user["id"],
+            filename=unique_filename,
+            original_filename=file.filename,
+            file_path=file_path,
+            file_size=len(contents),
+            mime_type=file.content_type
+        )
+        
+        return {
+            "id": image_id,
+            "filename": unique_filename,
+            "original_filename": file.filename,
+            "file_size": len(contents),
+            "mime_type": file.content_type,
+            "uploaded_at": datetime.now()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+@app.get("/my-images", response_model=list[ImageResponse])
+async def get_my_images(current_user = Depends(get_current_user)):
+    images = get_user_images(current_user["id"])
+    return [
+        {
+            "id": img["id"],
+            "filename": img["filename"],
+            "original_filename": img["original_filename"],
+            "file_size": img["file_size"],
+            "mime_type": img["mime_type"],
+            "uploaded_at": img["uploaded_at"]
+        }
+        for img in images
+    ]
 
 @app.post("/process-image/")
 async def upload_image(file: UploadFile = File(...)):
