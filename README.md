@@ -47,9 +47,9 @@ uvicorn main:app --reload
 
 ### 4. Contributors
 
-- Lead Developer: [Your Name]
-- Frontend Developer: [Dev 2]
-- Backend Developer: [Dev 3]
+- Lead Developer: [Jetross Axle Galinato]
+- Frontend Developer: [Kevin Melendrez]
+- Backend Developer: [Christ Gabales]
 
 ---
 

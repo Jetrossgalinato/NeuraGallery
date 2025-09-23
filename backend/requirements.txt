@@ -2,3 +2,9 @@ fastapi
 uvicorn
 opencv-python
 python-multipart
+numpy
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+psycopg2-binary
+python-dotenv
