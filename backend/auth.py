@@ -1,12 +1,10 @@
+
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional
+from database import create_user, get_user_by_username, get_user_by_email
 
-# Simple in-memory user storage (replace with database in production)
-fake_users_db = {}
-
-# Security settings
 SECRET_KEY = "your-secret-key-here"  # Change this in production
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -19,14 +17,8 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-def get_user(username: str):
-    if username in fake_users_db:
-        user_dict = fake_users_db[username]
-        return user_dict
-    return None
-
 def authenticate_user(username: str, password: str):
-    user = get_user(username)
+    user = get_user_by_username(username)
     if not user:
         return False
     if not verify_password(password, user["hashed_password"]):
@@ -52,3 +44,12 @@ def verify_token(token: str):
         return username
     except JWTError:
         return None
+
+def register_user(username: str, email: str, password: str):
+    if get_user_by_username(username):
+        return {"error": "Username already exists"}
+    if get_user_by_email(email):
+        return {"error": "Email already exists"}
+    hashed_password = get_password_hash(password)
+    user_id = create_user(username, email, hashed_password)
+    return {"message": "User created successfully", "user_id": user_id}
