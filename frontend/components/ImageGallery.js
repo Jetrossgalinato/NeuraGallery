@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
+import ImageEditor from "./ImageEditor";
 
 export default function ImageGallery({ refreshTrigger }) {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState(null);
+  const [editingImage, setEditingImage] = useState(null);
   // controls for preview modal - keep at top level to obey rules of hooks
   const [zoom, setZoom] = useState(1);
 
@@ -228,7 +230,9 @@ export default function ImageGallery({ refreshTrigger }) {
                 className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 font-semibold text-sm ml-2"
                 onClick={(e) => {
                   e.stopPropagation();
-                  // placeholder for edit flow
+                  setEditingImage(previewImage);
+                  setPreviewImage(null);
+                  setZoom(1);
                 }}
               >
                 Edit
@@ -276,6 +280,18 @@ export default function ImageGallery({ refreshTrigger }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Editor Modal */}
+      {editingImage && (
+        <ImageEditor
+          image={editingImage}
+          onClose={() => setEditingImage(null)}
+          onProcessed={() => {
+            setEditingImage(null);
+            fetchImages(); // Refresh the gallery
+          }}
+        />
       )}
     </div>
   );
