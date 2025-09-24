@@ -56,10 +56,13 @@ class ColorSpaceParams(BaseModel):
 
 class ProcessedImageResponse(BaseModel):
     success: bool
-    processed_filename: Optional[str] = None
+    processed_filename: str
     message: str
     operation: str
-    parameters: dict = {}
+    parameters: Optional[dict] = None
+    
+class DeleteImagesRequest(BaseModel):
+    image_ids: list[int]
 
 # Advanced Editing Models
 class DrawingParams(BaseModel):

@@ -12,11 +12,12 @@ from datetime import datetime, timedelta
 from auth import (
     register_user, authenticate_user, create_access_token, verify_token, ACCESS_TOKEN_EXPIRE_MINUTES
 )
-from database import init_database, get_user_by_username, create_image, get_user_images
+from database import init_database, get_user_by_username, create_image, get_user_images, delete_image, delete_multiple_images
 from models import (
     UserCreate, UserLogin, Token, User, ImageResponse, ImageProcessingRequest, 
     ImageDimensionsResponse, ProcessedImageResponse, HSVAdjustParams, RGBChannelParams, 
-    ColorSpaceParams, DrawingParams, TransformParams, ResizeParams, ScaleParams, CropParams
+    ColorSpaceParams, DrawingParams, TransformParams, ResizeParams, ScaleParams, CropParams,
+    DeleteImagesRequest
 )
 
 
@@ -161,6 +162,62 @@ async def get_my_images(current_user = Depends(get_current_user)):
         }
         for img in images
     ]
+
+@app.delete("/image/{image_id}")
+async def delete_single_image(image_id: int, current_user = Depends(get_current_user)):
+    """Delete a single image if it belongs to the current user"""
+    try:
+        # Attempt to delete the image from the database
+        success, result = delete_image(image_id, current_user["id"])
+        
+        if not success:
+            raise HTTPException(status_code=404, detail=result)
+            
+        # If successful, result contains the file path - delete the actual file
+        if os.path.exists(result):
+            os.remove(result)
+            
+        return {
+            "success": True,
+            "message": f"Image {image_id} deleted successfully"
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error deleting image: {str(e)}")
+
+@app.post("/images/delete")
+async def delete_multiple_images_endpoint(request: DeleteImagesRequest, current_user = Depends(get_current_user)):
+    """Delete multiple images if they belong to the current user"""
+    try:
+        # Validate request
+        if not request.image_ids:
+            raise HTTPException(status_code=400, detail="No image IDs provided")
+            
+        # Attempt to delete the images from the database - using the imported function
+        file_paths, message = delete_multiple_images(request.image_ids, current_user["id"])
+        
+        if not file_paths:
+            raise HTTPException(status_code=404, detail=message)
+            
+        # Delete the actual files
+        deleted_files = 0
+        for path in file_paths:
+            if os.path.exists(path):
+                os.remove(path)
+                deleted_files += 1
+                
+        return {
+            "success": True,
+            "message": f"Successfully deleted {deleted_files} images",
+            "deleted_count": deleted_files
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error deleting images: {str(e)}")
 
 # Image Processing Endpoints
 
