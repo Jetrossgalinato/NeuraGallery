@@ -87,166 +87,26 @@ export default function ImageUpload({ onUploadSuccess }) {
     }
   };
 
-  const styles = {
-    container: {
-      display: "flex",
-      flexDirection: "column",
-      gap: 20,
-    },
-    title: {
-      fontSize: "20px",
-      fontWeight: 600,
-      color: "#2d4a2b",
-      margin: 0,
-      marginBottom: 6,
-      letterSpacing: "-0.2px",
-    },
-    subtitle: {
-      fontSize: "14px",
-      color: "#6b7280",
-      margin: 0,
-      marginBottom: 20,
-    },
-    dropZone: {
-      padding: 32,
-      border: `2px dashed ${isDragOver ? "#22c55e" : "#d1d5db"}`,
-      borderRadius: 8,
-      textAlign: "center",
-      backgroundColor: isDragOver ? "#f0fff4" : "#ffffff",
-      transition: "all 0.2s ease",
-      cursor: "pointer",
-      position: "relative",
-    },
-    dropZoneContent: {
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      gap: 12,
-    },
-    uploadIcon: {
-      width: 40,
-      height: 40,
-      color: isDragOver ? "#22c55e" : "#9ca3af",
-      transition: "color 0.2s ease",
-    },
-    dropText: {
-      fontSize: "16px",
-      fontWeight: 600,
-      color: isDragOver ? "#22c55e" : "#2d4a2b",
-      margin: 0,
-    },
-    dropSubtext: {
-      fontSize: "14px",
-      color: "#6b7280",
-      margin: 0,
-    },
-    fileInput: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      opacity: 0,
-      cursor: "pointer",
-    },
-    previewContainer: {
-      display: "flex",
-      gap: 20,
-      alignItems: "flex-start",
-    },
-    previewImage: {
-      width: 180,
-      height: 180,
-      borderRadius: 8,
-      objectFit: "cover",
-      border: "1px solid #e5e5e5",
-      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-    },
-    fileInfo: {
-      flex: 1,
-      padding: 20,
-      backgroundColor: "#f8f9fa",
-      borderRadius: 8,
-      border: "1px solid #e5e5e5",
-    },
-    fileName: {
-      fontSize: "16px",
-      fontWeight: 600,
-      color: "#2d4a2b",
-      margin: 0,
-      marginBottom: 6,
-      wordBreak: "break-word",
-    },
-    fileSize: {
-      fontSize: "14px",
-      color: "#6b7280",
-      margin: 0,
-      marginBottom: 16,
-    },
-    actionButtons: {
-      display: "flex",
-      gap: 10,
-    },
-    uploadButton: {
-      padding: "10px 20px",
-      backgroundColor: uploading ? "#f3f4f6" : "#22c55e",
-      color: uploading ? "#9ca3af" : "#ffffff",
-      border: "none",
-      borderRadius: 6,
-      fontSize: "14px",
-      fontWeight: 600,
-      cursor: uploading ? "not-allowed" : "pointer",
-      transition: "background-color 0.2s ease",
-      letterSpacing: "0.2px",
-    },
-    uploadButtonHover: {
-      backgroundColor: "#16a34a",
-    },
-    cancelButton: {
-      padding: "10px 20px",
-      backgroundColor: "transparent",
-      color: "#6b7280",
-      border: "1px solid #d1d5db",
-      borderRadius: 6,
-      fontSize: "14px",
-      fontWeight: 600,
-      cursor: "pointer",
-      transition: "all 0.2s ease",
-      letterSpacing: "0.2px",
-    },
-    cancelButtonHover: {
-      backgroundColor: "#f9fafb",
-      borderColor: "#9ca3af",
-      color: "#374151",
-    },
-    successMessage: {
-      padding: "12px 16px",
-      backgroundColor: "#f0fff4",
-      border: "1px solid #bbf7d0",
-      borderRadius: 6,
-      color: "#22c55e",
-      fontSize: "14px",
-      fontWeight: 500,
-      textAlign: "center",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-    },
-  };
+  // ...existing code...
 
   return (
-    <div style={styles.container}>
+    <div className="flex flex-col gap-5">
       <div>
-        <h3 style={styles.title}>Upload Image</h3>
-        <p style={styles.subtitle}>
+        <h3 className="text-2xl font-semibold text-gray-900 mb-1 tracking-tight">
+          Upload Image
+        </h3>
+        <p className="text-sm text-gray-500 mb-5">
           Upload your images for AI-powered processing
         </p>
       </div>
 
       {!selectedFile ? (
         <div
-          style={styles.dropZone}
+          className={`relative p-8 border-2 border-dashed rounded-lg text-center transition-all cursor-pointer ${
+            isDragOver
+              ? "border-green-500 bg-green-50"
+              : "border-gray-300 bg-white"
+          }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -255,11 +115,13 @@ export default function ImageUpload({ onUploadSuccess }) {
             type="file"
             accept="image/*"
             onChange={handleFileSelect}
-            style={styles.fileInput}
+            className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
           />
-          <div style={styles.dropZoneContent}>
+          <div className="flex flex-col items-center gap-3">
             <svg
-              style={styles.uploadIcon}
+              className={`w-10 h-10 ${
+                isDragOver ? "text-gray-500" : "text-gray-400"
+              } transition-colors`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -272,46 +134,48 @@ export default function ImageUpload({ onUploadSuccess }) {
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p style={styles.dropText}>
+            <p
+              className={`text-base font-semibold ${
+                isDragOver ? "text-gray-500" : "text-gray-900"
+              } m-0`}
+            >
               {isDragOver ? "Drop your image here" : "Drag & drop an image"}
             </p>
-            <p style={styles.dropSubtext}>
+            <p className="text-sm text-gray-500 m-0">
               or click to browse • PNG, JPG, GIF up to 10MB
             </p>
           </div>
         </div>
       ) : (
-        <div style={styles.previewContainer}>
+        <div className="flex gap-5 items-start">
           {preview && (
-            <img src={preview} alt="Preview" style={styles.previewImage} />
+            <img
+              src={preview}
+              alt="Preview"
+              className="w-44 h-44 rounded-lg object-cover border border-gray-200 shadow"
+            />
           )}
-          <div style={styles.fileInfo}>
-            <p style={styles.fileName}>{selectedFile.name}</p>
-            <p style={styles.fileSize}>
+          <div className="flex-1 p-5 bg-gray-50 rounded-lg border border-gray-200">
+            <p className="text-lg font-semibold text-gray-900 mb-1 break-words">
+              {selectedFile.name}
+            </p>
+            <p className="text-sm text-gray-500 mb-4">
               {Math.round(selectedFile.size / 1024)} KB • {selectedFile.type}
             </p>
-            <div style={styles.actionButtons}>
+            <div className="flex gap-2">
               <button
                 onClick={handleUpload}
                 disabled={uploading}
-                style={styles.uploadButton}
-                onMouseEnter={(e) =>
-                  !uploading &&
-                  Object.assign(e.target.style, styles.uploadButtonHover)
-                }
-                onMouseLeave={(e) =>
-                  Object.assign(e.target.style, styles.uploadButton)
-                }
+                className={`px-5 py-2 rounded font-semibold text-sm transition-colors tracking-wide ${
+                  uploading
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-green-500 text-white hover:bg-green-600"
+                }`}
               >
                 {uploading ? (
                   <>
                     <svg
-                      style={{
-                        width: 16,
-                        height: 16,
-                        marginRight: 8,
-                        animation: "spin 1s linear infinite",
-                      }}
+                      className="inline-block w-4 h-4 mr-2 animate-spin"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -337,13 +201,7 @@ export default function ImageUpload({ onUploadSuccess }) {
                     document.querySelector('input[type="file"]');
                   if (fileInput) fileInput.value = "";
                 }}
-                style={styles.cancelButton}
-                onMouseEnter={(e) =>
-                  Object.assign(e.target.style, styles.cancelButtonHover)
-                }
-                onMouseLeave={(e) =>
-                  Object.assign(e.target.style, styles.cancelButton)
-                }
+                className="px-5 py-2 border border-gray-300 rounded font-semibold text-sm text-gray-500 bg-white hover:bg-gray-100 transition-colors"
               >
                 Cancel
               </button>
