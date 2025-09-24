@@ -99,3 +99,56 @@ def get_user_images(user_id: int):
         images = cur.fetchall()
         cur.close()
         return images
+
+def delete_image(image_id: int, user_id: int):
+    """Delete a single image from the database if it belongs to the user"""
+    with get_db_connection() as conn:
+        cur = conn.cursor()
+        
+        # First check if image exists and belongs to user
+        cur.execute("SELECT file_path FROM images WHERE id = %s AND user_id = %s", (image_id, user_id))
+        image = cur.fetchone()
+        
+        if not image:
+            return False, "Image not found or access denied"
+            
+        # Delete the image from database
+        cur.execute("DELETE FROM images WHERE id = %s AND user_id = %s", (image_id, user_id))
+        conn.commit()
+        
+        # Return the file path so we can delete the physical file
+        return True, image["file_path"]
+
+def delete_multiple_images(image_ids: list, user_id: int):
+    """Delete multiple images from the database if they belong to the user"""
+    if not image_ids:
+        return [], "No images specified for deletion"
+        
+    with get_db_connection() as conn:
+        cur = conn.cursor()
+        
+        # Get all file paths for images that exist and belong to the user
+        placeholders = ','.join(['%s'] * len(image_ids))
+        cur.execute(
+            f"SELECT id, file_path FROM images WHERE id IN ({placeholders}) AND user_id = %s",
+            [*image_ids, user_id]
+        )
+        images = cur.fetchall()
+        
+        if not images:
+            return [], "No matching images found or access denied"
+            
+        # Extract IDs and file paths
+        found_ids = [img["id"] for img in images]
+        file_paths = [img["file_path"] for img in images]
+        
+        # Delete the images from database
+        placeholders = ','.join(['%s'] * len(found_ids))
+        cur.execute(
+            f"DELETE FROM images WHERE id IN ({placeholders}) AND user_id = %s",
+            [*found_ids, user_id]
+        )
+        conn.commit()
+        
+        # Return the file paths so we can delete the physical files
+        return file_paths, f"Successfully deleted {len(file_paths)} images"
