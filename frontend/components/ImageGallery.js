@@ -6,6 +6,7 @@ import axios from "axios";
 export default function ImageGallery({ refreshTrigger }) {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [previewImage, setPreviewImage] = useState(null);
 
   const fetchImages = async () => {
     try {
@@ -242,6 +243,7 @@ export default function ImageGallery({ refreshTrigger }) {
             onMouseLeave={(e) =>
               Object.assign(e.currentTarget.style, styles.imageCard)
             }
+            onClick={() => setPreviewImage(image)}
           >
             <div style={styles.imageContainer}>
               <img
@@ -332,6 +334,80 @@ export default function ImageGallery({ refreshTrigger }) {
           </div>
         ))}
       </div>
+      {/* Modal for image preview */}
+      {previewImage && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0,0,0,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              boxShadow: "0 4px 32px rgba(0,0,0,0.2)",
+              padding: 24,
+              maxWidth: 480,
+              width: "90vw",
+              maxHeight: "80vh",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              position: "relative",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={`http://localhost:8000/uploads/${previewImage.filename}`}
+              alt={previewImage.original_filename}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "60vh",
+                borderRadius: 8,
+                marginBottom: 16,
+              }}
+            />
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontWeight: 600, fontSize: 16, color: "#2d4a2b" }}>
+                {previewImage.original_filename}
+              </div>
+              <div style={{ fontSize: 14, color: "#6b7280" }}>
+                {Math.round(previewImage.file_size / 1024)} KB •{" "}
+                {previewImage.mime_type}
+              </div>
+              <div style={{ fontSize: 13, color: "#6b7280" }}>
+                {new Date(previewImage.uploaded_at).toLocaleString()}
+              </div>
+            </div>
+            <button
+              style={{
+                marginTop: 18,
+                padding: "8px 20px",
+                background: "#22c55e",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+              onClick={() => setPreviewImage(null)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
       <style jsx>{`
         @keyframes spin {
           0% {
