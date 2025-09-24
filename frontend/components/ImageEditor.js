@@ -10,6 +10,8 @@ import CropTools from "./CropTools";
 import "../styles/ImageEditor.css";
 
 export default function ImageEditor({ image, onClose, onProcessed }) {
+  // Advanced tool selector state
+  const [selectedAdvancedTool, setSelectedAdvancedTool] = useState("drawing");
   const [processing, setProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState("adjust"); // adjust, filters, advanced, details
 
@@ -591,6 +593,33 @@ export default function ImageEditor({ image, onClose, onProcessed }) {
                 scrollbarColor: "#4a5568 #1a202c",
               }}
             >
+              {/* Tool Cards Selector */}
+              <div className="mb-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: "drawing", name: "Drawing Tools", icon: "✏️" },
+                    { key: "transform", name: "Transform Tools", icon: "🔄" },
+                    { key: "resize", name: "Resize Tools", icon: "📏" },
+                    { key: "scale", name: "Scale Tools", icon: "📐" },
+                    { key: "crop", name: "Crop Tools", icon: "✂️" },
+                  ].map((tool) => (
+                    <button
+                      key={tool.key}
+                      onClick={() => setSelectedAdvancedTool(tool.key)}
+                      className={`flex flex-col items-center p-4 border rounded-lg transition-colors disabled:opacity-50 ${
+                        selectedAdvancedTool === tool.key
+                          ? "border-blue-400 bg-gray-700"
+                          : "border-gray-600 hover:border-gray-400"
+                      }`}
+                    >
+                      <div className="text-2xl mb-2">{tool.icon}</div>
+                      <span className="text-sm text-gray-300">{tool.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Only show the selected tool */}
               {!dimensions && (
                 <button
                   onClick={getDimensions}
@@ -603,50 +632,43 @@ export default function ImageEditor({ image, onClose, onProcessed }) {
                 </button>
               )}
 
-              {/* Drawing Tools */}
-              <DrawingTools
-                image={image}
-                onProcessed={onProcessed}
-                onClose={onClose}
-              />
-
-              {/* Transform Tools */}
-              <div className="border-t border-gray-700 pt-6">
+              {selectedAdvancedTool === "drawing" && (
+                <DrawingTools
+                  image={image}
+                  onProcessed={onProcessed}
+                  onClose={onClose}
+                />
+              )}
+              {selectedAdvancedTool === "transform" && (
                 <TransformTools
                   image={image}
                   onProcessed={onProcessed}
                   onClose={onClose}
                 />
-              </div>
-
-              {/* Resize Tools */}
-              <div className="border-t border-gray-700 pt-6">
+              )}
+              {selectedAdvancedTool === "resize" && (
                 <ResizeTools
                   image={image}
                   dimensions={dimensions}
                   onProcessed={onProcessed}
                   onClose={onClose}
                 />
-              </div>
-
-              {/* Scale Tools */}
-              <div className="border-t border-gray-700 pt-6">
+              )}
+              {selectedAdvancedTool === "scale" && (
                 <ScaleTools
                   image={image}
                   onProcessed={onProcessed}
                   onClose={onClose}
                 />
-              </div>
-
-              {/* Crop Tools */}
-              <div className="border-t border-gray-700 pt-6">
+              )}
+              {selectedAdvancedTool === "crop" && (
                 <CropTools
                   image={image}
                   dimensions={dimensions}
                   onProcessed={onProcessed}
                   onClose={onClose}
                 />
-              </div>
+              )}
             </div>
           )}
 
