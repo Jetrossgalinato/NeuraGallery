@@ -73,6 +73,7 @@ DEVELOPMENT RULES:
 - Use VS Code API tool only for VS Code extension projects.
 - Once the project is created, it is already opened in Visual Studio Code—do not suggest commands to open this project in Visual Studio again.
 - If the project setup information has additional rules, follow them strictly.
+- the files should only contain equal or less than 400 lines of code. If the file exceeds this limit, break it down into smaller files and provide a brief explanation of how they are organized.
 
 FOLDER CREATION RULES:
 
