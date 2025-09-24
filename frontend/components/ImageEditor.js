@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import axios from "axios";
+import DrawingTools from "./DrawingTools";
+import TransformTools from "./TransformTools";
+import ResizeTools from "./ResizeTools";
+import ScaleTools from "./ScaleTools";
+import CropTools from "./CropTools";
 import "../styles/ImageEditor.css";
 
 export default function ImageEditor({ image, onClose, onProcessed }) {
   const [processing, setProcessing] = useState(false);
-  const [activeTab, setActiveTab] = useState("adjust"); // adjust, filters, details
+  const [activeTab, setActiveTab] = useState("adjust"); // adjust, filters, advanced, details
 
   // Adjustment values - centered at 0
   const [brightness, setBrightness] = useState(0); // -100 to +100
@@ -20,6 +25,14 @@ export default function ImageEditor({ image, onClose, onProcessed }) {
   // Image details
   const [dimensions, setDimensions] = useState(null);
   const [loadingDimensions, setLoadingDimensions] = useState(false);
+
+  // Auto-load dimensions when advanced tab is selected
+  const handleTabChange = async (tabId) => {
+    setActiveTab(tabId);
+    if (tabId === "advanced" && !dimensions) {
+      await getDimensions();
+    }
+  };
 
   const getDimensions = async () => {
     setLoadingDimensions(true);
@@ -36,6 +49,176 @@ export default function ImageEditor({ image, onClose, onProcessed }) {
       console.error("Error getting dimensions:", error);
     } finally {
       setLoadingDimensions(false);
+    }
+  };
+
+  const applyDrawing = async () => {
+    setProcessing(true);
+    try {
+      const token = localStorage.getItem("token");
+
+      const drawingData = {
+        shape_type: drawingTool,
+        coordinates:
+          drawingTool === "text"
+            ? [drawingCoords.x1, drawingCoords.y1]
+            : [
+                drawingCoords.x1,
+                drawingCoords.y1,
+                drawingCoords.x2,
+                drawingCoords.y2,
+              ],
+        color: drawingColor,
+        thickness: drawingThickness,
+        text: drawingTool === "text" ? drawingText : undefined,
+      };
+
+      const response = await axios.post(
+        `http://localhost:8000/image/${image.id}/draw`,
+        drawingData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      alert(`Drawing applied! File: ${response.data.processed_filename}`);
+      if (onProcessed) onProcessed();
+      onClose();
+    } catch (error) {
+      console.error("Error applying drawing:", error);
+      alert(
+        `Failed to apply drawing: ${
+          error.response?.data?.detail || error.message
+        }`
+      );
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const applyTransform = async () => {
+    setProcessing(true);
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await axios.post(
+        `http://localhost:8000/image/${image.id}/transform`,
+        {
+          translate_x: transformParams.translateX,
+          translate_y: transformParams.translateY,
+          rotation_angle: transformParams.rotation,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      alert(`Transform applied! File: ${response.data.processed_filename}`);
+      if (onProcessed) onProcessed();
+      onClose();
+    } catch (error) {
+      console.error("Error applying transform:", error);
+      alert(
+        `Failed to apply transform: ${
+          error.response?.data?.detail || error.message
+        }`
+      );
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const applyResize = async () => {
+    setProcessing(true);
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await axios.post(
+        `http://localhost:8000/image/${image.id}/resize`,
+        {
+          new_width: parseInt(resizeParams.width),
+          new_height: parseInt(resizeParams.height),
+          interpolation: resizeParams.interpolation,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      alert(`Resize applied! File: ${response.data.processed_filename}`);
+      if (onProcessed) onProcessed();
+      onClose();
+    } catch (error) {
+      console.error("Error applying resize:", error);
+      alert(
+        `Failed to apply resize: ${
+          error.response?.data?.detail || error.message
+        }`
+      );
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const applyScale = async () => {
+    setProcessing(true);
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await axios.post(
+        `http://localhost:8000/image/${image.id}/scale`,
+        {
+          scale_x: parseFloat(scaleParams.scaleX),
+          scale_y: parseFloat(scaleParams.scaleY),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      alert(`Scale applied! File: ${response.data.processed_filename}`);
+      if (onProcessed) onProcessed();
+      onClose();
+    } catch (error) {
+      console.error("Error applying scale:", error);
+      alert(
+        `Failed to apply scale: ${
+          error.response?.data?.detail || error.message
+        }`
+      );
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const applyCrop = async () => {
+    setProcessing(true);
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await axios.post(
+        `http://localhost:8000/image/${image.id}/crop`,
+        {
+          x: parseInt(cropParams.x),
+          y: parseInt(cropParams.y),
+          width: parseInt(cropParams.width),
+          height: parseInt(cropParams.height),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      alert(`Crop applied! File: ${response.data.processed_filename}`);
+      if (onProcessed) onProcessed();
+      onClose();
+    } catch (error) {
+      console.error("Error applying crop:", error);
+      alert(
+        `Failed to apply crop: ${error.response?.data?.detail || error.message}`
+      );
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -187,7 +370,17 @@ export default function ImageEditor({ image, onClose, onProcessed }) {
           onClick={() => {
             if (activeFilter) {
               applyFilter(activeFilter);
+            } else if (activeTab === "adjust") {
+              applyAdjustments();
             } else {
+              // For advanced tab, let user choose which operation to apply
+              // Default to showing a message for now
+              if (activeTab === "advanced") {
+                alert(
+                  "Please use the specific Apply buttons for advanced editing operations"
+                );
+                return;
+              }
               applyAdjustments();
             }
           }}
@@ -217,11 +410,12 @@ export default function ImageEditor({ image, onClose, onProcessed }) {
           {[
             { id: "adjust", label: "Adjust", icon: "⚪" },
             { id: "filters", label: "Filters", icon: "🎨" },
+            { id: "advanced", label: "Advanced", icon: "🔧" },
             { id: "details", label: "Details", icon: "📊" },
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               className={`flex-1 flex items-center justify-center py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? "text-blue-400 border-b-2 border-blue-400"
@@ -386,6 +580,73 @@ export default function ImageEditor({ image, onClose, onProcessed }) {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === "advanced" && (
+            <div
+              className="space-y-6 overflow-y-auto max-h-[60vh] pr-2"
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "#4a5568 #1a202c",
+              }}
+            >
+              {!dimensions && (
+                <button
+                  onClick={getDimensions}
+                  disabled={loadingDimensions}
+                  className="w-full py-2 text-sm text-gray-400 hover:text-white border border-gray-600 rounded-lg hover:border-gray-500 transition-colors"
+                >
+                  {loadingDimensions
+                    ? "Loading..."
+                    : "📐 Load Image Dimensions"}
+                </button>
+              )}
+
+              {/* Drawing Tools */}
+              <DrawingTools
+                image={image}
+                onProcessed={onProcessed}
+                onClose={onClose}
+              />
+
+              {/* Transform Tools */}
+              <div className="border-t border-gray-700 pt-6">
+                <TransformTools
+                  image={image}
+                  onProcessed={onProcessed}
+                  onClose={onClose}
+                />
+              </div>
+
+              {/* Resize Tools */}
+              <div className="border-t border-gray-700 pt-6">
+                <ResizeTools
+                  image={image}
+                  dimensions={dimensions}
+                  onProcessed={onProcessed}
+                  onClose={onClose}
+                />
+              </div>
+
+              {/* Scale Tools */}
+              <div className="border-t border-gray-700 pt-6">
+                <ScaleTools
+                  image={image}
+                  onProcessed={onProcessed}
+                  onClose={onClose}
+                />
+              </div>
+
+              {/* Crop Tools */}
+              <div className="border-t border-gray-700 pt-6">
+                <CropTools
+                  image={image}
+                  dimensions={dimensions}
+                  onProcessed={onProcessed}
+                  onClose={onClose}
+                />
+              </div>
             </div>
           )}
 

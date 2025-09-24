@@ -13,7 +13,11 @@ from auth import (
     register_user, authenticate_user, create_access_token, verify_token, ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from database import init_database, get_user_by_username, create_image, get_user_images
-from models import UserCreate, UserLogin, Token, User, ImageResponse, ImageProcessingRequest, ImageDimensionsResponse, ProcessedImageResponse, HSVAdjustParams, RGBChannelParams, ColorSpaceParams
+from models import (
+    UserCreate, UserLogin, Token, User, ImageResponse, ImageProcessingRequest, 
+    ImageDimensionsResponse, ProcessedImageResponse, HSVAdjustParams, RGBChannelParams, 
+    ColorSpaceParams, DrawingParams, TransformParams, ResizeParams, ScaleParams, CropParams
+)
 
 
 app = FastAPI()
@@ -514,7 +518,336 @@ async def upload_image(file: UploadFile = File(...)):
         })
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
+# Advanced Editing Endpoints
+
+@app.post("/image/{image_id}/draw")
+async def draw_on_image(
+    image_id: int,
+    shape_type: str,
+    start_x: int,
+    start_y: int,
+    end_x: int = None,
+    end_y: int = None,
+    radius: int = None,
+    color_r: int = 255,
+    color_g: int = 255, 
+    color_b: int = 255,
+    thickness: int = 2,
+    text: str = None,
+    font_size: float = 1.0,
+    current_user = Depends(get_current_user)
+):
+    """Draw shapes or text on an image using OpenCV."""
+    try:
+        # Get image from database
+        user_images = get_user_images(current_user["id"])
+        image_info = next((img for img in user_images if img["id"] == image_id), None)
+        
+        if not image_info:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # Load image
+        image_path = os.path.join("uploads", image_info["filename"])
+        image = cv2.imread(image_path)
+        
+        if image is None:
+            raise HTTPException(status_code=400, detail="Unable to read image")
+        
+        # Draw based on shape type
+        color = (color_b, color_g, color_r)  # OpenCV uses BGR format
+        
+        if shape_type == "line" and end_x is not None and end_y is not None:
+            cv2.line(image, (start_x, start_y), (end_x, end_y), color, thickness)
+        elif shape_type == "rectangle" and end_x is not None and end_y is not None:
+            cv2.rectangle(image, (start_x, start_y), (end_x, end_y), color, thickness)
+        elif shape_type == "circle" and radius is not None:
+            cv2.circle(image, (start_x, start_y), radius, color, thickness)
+        elif shape_type == "text" and text is not None:
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(image, text, (start_x, start_y), font, font_size, color, thickness)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid shape type or missing parameters")
+        
+        # Save processed image
+        base_name = os.path.splitext(image_info["filename"])[0]
+        processed_filename = f"{base_name}_draw_{shape_type}.jpg"
+        processed_path = os.path.join("uploads", processed_filename)
+        
+        cv2.imwrite(processed_path, image)
+        
+        return {
+            "success": True,
+            "processed_filename": processed_filename,
+            "message": f"{shape_type.capitalize()} drawn successfully",
+            "operation": "draw",
+            "parameters": {
+                "shape_type": shape_type,
+                "start_point": [start_x, start_y],
+                "end_point": [end_x, end_y] if end_x is not None else None,
+                "radius": radius,
+                "color": [color_r, color_g, color_b],
+                "thickness": thickness,
+                "text": text,
+                "font_size": font_size
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error drawing on image: {str(e)}")
+
+@app.post("/image/{image_id}/transform")
+async def transform_image(
+    image_id: int,
+    operation: str,
+    tx: float = 0,
+    ty: float = 0,
+    angle: float = 0,
+    center_x: float = None,
+    center_y: float = None,
+    current_user = Depends(get_current_user)
+):
+    """Apply geometric transformations (translate, rotate) to an image."""
+    try:
+        if operation not in ['translate', 'rotate']:
+            raise HTTPException(status_code=400, detail="Operation must be 'translate' or 'rotate'")
+        
+        # Get image from database
+        user_images = get_user_images(current_user["id"])
+        image_info = next((img for img in user_images if img["id"] == image_id), None)
+        
+        if not image_info:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # Load image
+        image_path = os.path.join("uploads", image_info["filename"])
+        image = cv2.imread(image_path)
+        
+        if image is None:
+            raise HTTPException(status_code=400, detail="Unable to read image")
+        
+        height, width = image.shape[:2]
+        
+        if operation == "translate":
+            # Translation matrix
+            M = np.float32([[1, 0, tx], [0, 1, ty]])
+            transformed_image = cv2.warpAffine(image, M, (width, height))
+        elif operation == "rotate":
+            # Rotation matrix
+            if center_x is None:
+                center_x = width // 2
+            if center_y is None:
+                center_y = height // 2
+            
+            M = cv2.getRotationMatrix2D((center_x, center_y), angle, 1.0)
+            transformed_image = cv2.warpAffine(image, M, (width, height))
+        
+        # Save processed image
+        base_name = os.path.splitext(image_info["filename"])[0]
+        processed_filename = f"{base_name}_{operation}_{tx}_{ty}_{angle}.jpg"
+        processed_path = os.path.join("uploads", processed_filename)
+        
+        cv2.imwrite(processed_path, transformed_image)
+        
+        return {
+            "success": True,
+            "processed_filename": processed_filename,
+            "message": f"Image {operation} applied successfully",
+            "operation": "transform",
+            "parameters": {
+                "operation": operation,
+                "tx": tx,
+                "ty": ty,
+                "angle": angle,
+                "center": [center_x, center_y] if operation == "rotate" else None
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error transforming image: {str(e)}")
+
+@app.post("/image/{image_id}/resize")
+async def resize_image(
+    image_id: int,
+    width: int,
+    height: int,
+    interpolation: str = "linear",
+    current_user = Depends(get_current_user)
+):
+    """Resize an image with different interpolation methods."""
+    try:
+        # Validate interpolation method
+        interpolation_methods = {
+            "nearest": cv2.INTER_NEAREST,
+            "linear": cv2.INTER_LINEAR,
+            "cubic": cv2.INTER_CUBIC,
+            "lanczos": cv2.INTER_LANCZOS4
+        }
+        
+        if interpolation not in interpolation_methods:
+            raise HTTPException(status_code=400, detail=f"Interpolation must be one of: {list(interpolation_methods.keys())}")
+        
+        # Get image from database
+        user_images = get_user_images(current_user["id"])
+        image_info = next((img for img in user_images if img["id"] == image_id), None)
+        
+        if not image_info:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # Load image
+        image_path = os.path.join("uploads", image_info["filename"])
+        image = cv2.imread(image_path)
+        
+        if image is None:
+            raise HTTPException(status_code=400, detail="Unable to read image")
+        
+        # Resize image
+        resized_image = cv2.resize(image, (width, height), interpolation=interpolation_methods[interpolation])
+        
+        # Save processed image
+        base_name = os.path.splitext(image_info["filename"])[0]
+        processed_filename = f"{base_name}_resized_{width}x{height}_{interpolation}.jpg"
+        processed_path = os.path.join("uploads", processed_filename)
+        
+        cv2.imwrite(processed_path, resized_image)
+        
+        return {
+            "success": True,
+            "processed_filename": processed_filename,
+            "message": f"Image resized to {width}x{height} with {interpolation} interpolation",
+            "operation": "resize",
+            "parameters": {
+                "width": width,
+                "height": height,
+                "interpolation": interpolation
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error resizing image: {str(e)}")
+
+@app.post("/image/{image_id}/scale")
+async def scale_image(
+    image_id: int,
+    scale_x: float = 1.0,
+    scale_y: float = 1.0,
+    interpolation: str = "linear",
+    current_user = Depends(get_current_user)
+):
+    """Scale an image by scale factors."""
+    try:
+        # Validate parameters
+        if scale_x <= 0 or scale_y <= 0:
+            raise HTTPException(status_code=400, detail="Scale factors must be positive")
+        
+        interpolation_methods = {
+            "nearest": cv2.INTER_NEAREST,
+            "linear": cv2.INTER_LINEAR,
+            "cubic": cv2.INTER_CUBIC,
+            "lanczos": cv2.INTER_LANCZOS4
+        }
+        
+        if interpolation not in interpolation_methods:
+            raise HTTPException(status_code=400, detail=f"Interpolation must be one of: {list(interpolation_methods.keys())}")
+        
+        # Get image from database
+        user_images = get_user_images(current_user["id"])
+        image_info = next((img for img in user_images if img["id"] == image_id), None)
+        
+        if not image_info:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # Load image
+        image_path = os.path.join("uploads", image_info["filename"])
+        image = cv2.imread(image_path)
+        
+        if image is None:
+            raise HTTPException(status_code=400, detail="Unable to read image")
+        
+        # Scale image
+        scaled_image = cv2.resize(image, None, fx=scale_x, fy=scale_y, interpolation=interpolation_methods[interpolation])
+        
+        # Save processed image
+        base_name = os.path.splitext(image_info["filename"])[0]
+        processed_filename = f"{base_name}_scaled_{scale_x}x{scale_y}_{interpolation}.jpg"
+        processed_path = os.path.join("uploads", processed_filename)
+        
+        cv2.imwrite(processed_path, scaled_image)
+        
+        return {
+            "success": True,
+            "processed_filename": processed_filename,
+            "message": f"Image scaled by {scale_x}x{scale_y} with {interpolation} interpolation",
+            "operation": "scale",
+            "parameters": {
+                "scale_x": scale_x,
+                "scale_y": scale_y,
+                "interpolation": interpolation
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error scaling image: {str(e)}")
+
+@app.post("/image/{image_id}/crop")
+async def crop_image(
+    image_id: int,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    current_user = Depends(get_current_user)
+):
+    """Crop an image to specified coordinates and dimensions."""
+    try:
+        # Validate parameters
+        if width <= 0 or height <= 0:
+            raise HTTPException(status_code=400, detail="Width and height must be positive")
+        if x < 0 or y < 0:
+            raise HTTPException(status_code=400, detail="Coordinates must be non-negative")
+        
+        # Get image from database
+        user_images = get_user_images(current_user["id"])
+        image_info = next((img for img in user_images if img["id"] == image_id), None)
+        
+        if not image_info:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # Load image
+        image_path = os.path.join("uploads", image_info["filename"])
+        image = cv2.imread(image_path)
+        
+        if image is None:
+            raise HTTPException(status_code=400, detail="Unable to read image")
+        
+        img_height, img_width = image.shape[:2]
+        
+        # Validate crop boundaries
+        if x + width > img_width or y + height > img_height:
+            raise HTTPException(status_code=400, detail="Crop area exceeds image boundaries")
+        
+        # Crop image
+        cropped_image = image[y:y+height, x:x+width]
+        
+        # Save processed image
+        base_name = os.path.splitext(image_info["filename"])[0]
+        processed_filename = f"{base_name}_cropped_{x}_{y}_{width}x{height}.jpg"
+        processed_path = os.path.join("uploads", processed_filename)
+        
+        cv2.imwrite(processed_path, cropped_image)
+        
+        return {
+            "success": True,
+            "processed_filename": processed_filename,
+            "message": f"Image cropped to {width}x{height} at position ({x}, {y})",
+            "operation": "crop",
+            "parameters": {
+                "x": x,
+                "y": y,
+                "width": width,
+                "height": height
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error cropping image: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
