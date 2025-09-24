@@ -44,8 +44,11 @@ app.add_middleware(
 # Helper function to get current user from PostgreSQL
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
+    print(f"Token received: {token[:10]}...")  # Print first 10 chars for security
     username = verify_token(token)
+    print(f"Username from token: {username}")
     if username is None:
+        print("Token verification failed")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
@@ -53,7 +56,9 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         )
     user = get_user_by_username(username)
     if user is None:
+        print(f"User not found for username: {username}")
         raise HTTPException(status_code=404, detail="User not found")
+    print(f"User authenticated: {user['username']}")
     return user
 
 
@@ -522,8 +527,13 @@ async def upload_image(file: UploadFile = File(...)):
 
 # Advanced Editing Endpoints
 
+from fastapi import Query
+
+from starlette.requests import Request
+
 @app.post("/image/{image_id}/draw")
 async def draw_on_image(
+    request: Request,
     image_id: int,
     shape_type: str,
     start_x: int,
@@ -537,8 +547,17 @@ async def draw_on_image(
     thickness: int = 2,
     text: str = None,
     font_size: float = 1.0,
+    create_copy: bool = Query(True, description="Whether to create a copy or update the original image"),
     current_user = Depends(get_current_user)
 ):
+    # Print debug info about request and parameters
+    print(f"Request URL: {request.url}")
+    print(f"Query params: {dict(request.query_params)}")
+    print(f"create_copy type: {type(create_copy)}, value: {create_copy}")
+    
+    # Manual check for create_copy in query params for debugging
+    raw_create_copy = request.query_params.get('create_copy', 'true')
+    print(f"Raw create_copy from query: {raw_create_copy}")
     """Draw shapes or text on an image using OpenCV."""
     try:
         # Get image from database
@@ -555,32 +574,62 @@ async def draw_on_image(
         if image is None:
             raise HTTPException(status_code=400, detail="Unable to read image")
         
+        # Make a copy if requested (default to True for safety)
+        target_image = image.copy() if create_copy else image
+        
         # Draw based on shape type
         color = (color_b, color_g, color_r)  # OpenCV uses BGR format
         
         if shape_type == "line" and end_x is not None and end_y is not None:
-            cv2.line(image, (start_x, start_y), (end_x, end_y), color, thickness)
+            cv2.line(target_image, (start_x, start_y), (end_x, end_y), color, thickness)
         elif shape_type == "rectangle" and end_x is not None and end_y is not None:
-            cv2.rectangle(image, (start_x, start_y), (end_x, end_y), color, thickness)
+            cv2.rectangle(target_image, (start_x, start_y), (end_x, end_y), color, thickness)
         elif shape_type == "circle" and radius is not None:
-            cv2.circle(image, (start_x, start_y), radius, color, thickness)
+            cv2.circle(target_image, (start_x, start_y), radius, color, thickness)
         elif shape_type == "text" and text is not None:
             font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(image, text, (start_x, start_y), font, font_size, color, thickness)
+            cv2.putText(target_image, text, (start_x, start_y), font, font_size, color, thickness)
         else:
             raise HTTPException(status_code=400, detail="Invalid shape type or missing parameters")
         
-        # Save processed image
+        # Save processed image - if updating original, we still create a copy first for safety
         base_name = os.path.splitext(image_info["filename"])[0]
-        processed_filename = f"{base_name}_draw_{shape_type}.jpg"
-        processed_path = os.path.join("uploads", processed_filename)
         
-        cv2.imwrite(processed_path, image)
+        if create_copy:
+            # Create a unique filename for the new copy
+            processed_filename = f"{base_name}_draw_{shape_type}_{datetime.now().strftime('%H%M%S')}.jpg"
+            processed_path = os.path.join("uploads", processed_filename)
+            cv2.imwrite(processed_path, target_image)
+            
+            # Save the new image to the database so it appears in the gallery
+            new_image_id = create_image(
+                user_id=current_user["id"],
+                filename=processed_filename,
+                original_filename=f"{image_info['original_filename']} (edited)",
+                file_path=processed_path,
+                file_size=os.path.getsize(processed_path),
+                mime_type="image/jpeg"
+            )
+            
+            # Get the newly created image info to return
+            new_image_info = next((img for img in get_user_images(current_user["id"]) if img["id"] == new_image_id), None)
+        else:
+            # When overwriting the original, make a backup first
+            backup_filename = f"{base_name}_backup.jpg"
+            backup_path = os.path.join("uploads", backup_filename)
+            cv2.imwrite(backup_path, image)
+            processed_filename = image_info["filename"]
+            processed_path = os.path.join("uploads", processed_filename)
+            cv2.imwrite(processed_path, target_image)
+            new_image_info = None
         
         return {
             "success": True,
             "processed_filename": processed_filename,
-            "message": f"{shape_type.capitalize()} drawn successfully",
+            "original_filename": image_info["filename"],
+            "create_copy": create_copy,
+            "new_image_id": new_image_info["id"] if create_copy else image_id,
+            "message": f"{shape_type.capitalize()} drawn successfully" + (" (created copy)" if create_copy else " (updated original)"),
             "operation": "draw",
             "parameters": {
                 "shape_type": shape_type,

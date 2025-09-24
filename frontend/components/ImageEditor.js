@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import axios from "axios";
-import DrawingTools from "./DrawingTools";
+import DrawingToolsWrapper from "./DrawingToolsWrapper";
 import TransformTools from "./TransformTools";
 import ResizeTools from "./ResizeTools";
 import ScaleTools from "./ScaleTools";
@@ -587,10 +587,10 @@ export default function ImageEditor({ image, onClose, onProcessed }) {
 
           {activeTab === "advanced" && (
             <div
-              className="space-y-6 overflow-y-auto max-h-[60vh] pr-2"
+              className="space-y-6 overflow-y-auto max-h-[500px] pb-16 pr-2 advanced-tools-container"
               style={{
-                scrollbarWidth: "thin",
-                scrollbarColor: "#4a5568 #1a202c",
+                scrollBehavior: "smooth",
+                overflowX: "hidden",
               }}
             >
               {/* Tool Cards Selector */}
@@ -633,11 +633,13 @@ export default function ImageEditor({ image, onClose, onProcessed }) {
               )}
 
               {selectedAdvancedTool === "drawing" && (
-                <DrawingTools
-                  image={image}
-                  onProcessed={onProcessed}
-                  onClose={onClose}
-                />
+                <div className="bg-gray-800 rounded-lg p-4 mb-10">
+                  <DrawingToolsWrapper
+                    image={image}
+                    onProcessed={onProcessed}
+                    onClose={onClose}
+                  />
+                </div>
               )}
               {selectedAdvancedTool === "transform" && (
                 <TransformTools

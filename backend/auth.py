@@ -37,12 +37,33 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 def verify_token(token: str):
     try:
+        # Print token details for debugging (first few characters)
+        print(f"Verifying token: {token[:10]}...")
+        
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        
+        # Print payload details for debugging
+        print(f"Token payload: {payload}")
+        
         username: str = payload.get("sub")
         if username is None:
+            print("No 'sub' claim found in token")
             return None
+            
+        # Check expiration manually for more detailed errors
+        if "exp" in payload:
+            expiry = datetime.fromtimestamp(payload["exp"])
+            now = datetime.utcnow()
+            if expiry < now:
+                print(f"Token expired at {expiry}, current time is {now}")
+                return None
+        
         return username
-    except JWTError:
+    except JWTError as e:
+        print(f"JWT Error verifying token: {str(e)}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error verifying token: {str(e)}")
         return None
 
 def register_user(username: str, email: str, password: str):
