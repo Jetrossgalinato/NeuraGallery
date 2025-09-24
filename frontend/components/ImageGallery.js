@@ -28,163 +28,16 @@ export default function ImageGallery({ refreshTrigger }) {
     fetchImages();
   }, [refreshTrigger]);
 
-  const styles = {
-    container: {
-      display: "flex",
-      flexDirection: "column",
-      gap: 20,
-    },
-    header: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 6,
-    },
-    title: {
-      fontSize: "20px",
-      fontWeight: 600,
-      color: "#2d4a2b",
-      margin: 0,
-      letterSpacing: "-0.2px",
-    },
-    count: {
-      fontSize: "14px",
-      color: "#6b7280",
-      backgroundColor: "#f3f4f6",
-      padding: "4px 10px",
-      borderRadius: 6,
-      fontWeight: 500,
-    },
-    subtitle: {
-      fontSize: "14px",
-      color: "#6b7280",
-      margin: 0,
-      marginBottom: 20,
-    },
-    loadingContainer: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 40,
-      color: "#6b7280",
-      fontSize: "14px",
-    },
-    loadingSpinner: {
-      width: 20,
-      height: 20,
-      border: "2px solid #e5e5e5",
-      borderTop: "2px solid #22c55e",
-      borderRadius: "50%",
-      animation: "spin 1s linear infinite",
-      marginRight: 10,
-    },
-    emptyState: {
-      textAlign: "center",
-      padding: 48,
-      backgroundColor: "#ffffff",
-      borderRadius: 8,
-      border: "2px dashed #d1d5db",
-    },
-    emptyIcon: {
-      width: 48,
-      height: 48,
-      color: "#d1d5db",
-      margin: "0 auto 16px",
-    },
-    emptyTitle: {
-      fontSize: "16px",
-      fontWeight: 600,
-      color: "#2d4a2b",
-      margin: 0,
-      marginBottom: 6,
-    },
-    emptyText: {
-      fontSize: "14px",
-      color: "#6b7280",
-      margin: 0,
-    },
-    grid: {
-      display: "grid",
-      gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-      gap: 20,
-    },
-    imageCard: {
-      backgroundColor: "#ffffff",
-      borderRadius: 8,
-      overflow: "hidden",
-      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-      border: "1px solid #e5e5e5",
-      transition: "all 0.2s ease",
-    },
-    imageCardHover: {
-      transform: "translateY(-2px)",
-      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.15)",
-    },
-    imageContainer: {
-      width: "100%",
-      height: 180,
-      backgroundColor: "#f9fafb",
-      position: "relative",
-      overflow: "hidden",
-    },
-    image: {
-      width: "100%",
-      height: "100%",
-      objectFit: "cover",
-      transition: "transform 0.2s ease",
-    },
-    imageHover: {
-      transform: "scale(1.03)",
-    },
-    imagePlaceholder: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      width: "100%",
-      height: "100%",
-      color: "#9ca3af",
-      fontSize: "12px",
-      fontWeight: 500,
-    },
-    cardContent: {
-      padding: 16,
-    },
-    imageName: {
-      fontSize: "14px",
-      fontWeight: 600,
-      color: "#2d4a2b",
-      margin: 0,
-      marginBottom: 10,
-      wordBreak: "break-word",
-      lineHeight: 1.3,
-    },
-    imageInfo: {
-      display: "flex",
-      flexDirection: "column",
-      gap: 4,
-    },
-    infoItem: {
-      display: "flex",
-      alignItems: "center",
-      gap: 6,
-      fontSize: "12px",
-      color: "#6b7280",
-    },
-    infoIcon: {
-      width: 14,
-      height: 14,
-      color: "#9ca3af",
-    },
-  };
+  // ...existing code...
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <h3 style={styles.title}>Your Gallery</h3>
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-2xl font-semibold text-gray-900">Your Gallery</h3>
         </div>
-        <div style={styles.loadingContainer}>
-          <div style={styles.loadingSpinner}></div>
+        <div className="flex items-center justify-center py-10 text-gray-500 text-sm">
+          <span className="inline-block w-5 h-5 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin mr-2"></span>
           Loading your images...
         </div>
       </div>
@@ -193,14 +46,16 @@ export default function ImageGallery({ refreshTrigger }) {
 
   if (images.length === 0) {
     return (
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <h3 style={styles.title}>Your Gallery</h3>
-          <span style={styles.count}>0 images</span>
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-2xl font-semibold text-gray-900">Your Gallery</h3>
+          <span className="text-sm text-gray-500 bg-gray-100 px-2.5 py-1 rounded font-medium">
+            0 images
+          </span>
         </div>
-        <div style={styles.emptyState}>
+        <div className="text-center p-12 bg-white rounded-lg border-2 border-dashed border-gray-300">
           <svg
-            style={styles.emptyIcon}
+            className="mx-auto mb-4 w-12 h-12 text-gray-300"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -212,8 +67,10 @@ export default function ImageGallery({ refreshTrigger }) {
               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          <h4 style={styles.emptyTitle}>No images yet</h4>
-          <p style={styles.emptyText}>
+          <h4 className="text-lg font-semibold text-gray-900 mb-1">
+            No images yet
+          </h4>
+          <p className="text-sm text-gray-500">
             Upload your first image to get started with your gallery
           </p>
         </div>
@@ -222,48 +79,36 @@ export default function ImageGallery({ refreshTrigger }) {
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h3 style={styles.title}>Your Gallery</h3>
-        <span style={styles.count}>
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-2xl font-semibold text-gray-900">Your Gallery</h3>
+        <span className="text-sm text-gray-500 bg-gray-100 px-2.5 py-1 rounded font-medium">
           {images.length} {images.length === 1 ? "image" : "images"}
         </span>
       </div>
-      <p style={styles.subtitle}>
+      <p className="text-sm text-gray-500 mb-5">
         Your uploaded images with AI processing capabilities
-      </p>{" "}
-      <div style={styles.grid}>
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
         {images.map((image) => (
           <div
             key={image.id}
-            style={styles.imageCard}
-            onMouseEnter={(e) =>
-              Object.assign(e.currentTarget.style, styles.imageCardHover)
-            }
-            onMouseLeave={(e) =>
-              Object.assign(e.currentTarget.style, styles.imageCard)
-            }
+            className="bg-white rounded-lg overflow-hidden shadow border border-gray-200 transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer"
             onClick={() => setPreviewImage(image)}
           >
-            <div style={styles.imageContainer}>
+            <div className="w-full h-44 bg-gray-50 relative overflow-hidden">
               <img
                 src={`http://localhost:8000/uploads/${image.filename}`}
                 alt={image.original_filename}
-                style={styles.image}
-                onMouseEnter={(e) =>
-                  Object.assign(e.target.style, styles.imageHover)
-                }
-                onMouseLeave={(e) =>
-                  Object.assign(e.target.style, styles.image)
-                }
+                className="w-full h-full object-cover transition-transform duration-200 hover:scale-105"
                 onError={(e) => {
                   e.target.style.display = "none";
                   e.target.nextSibling.style.display = "flex";
                 }}
               />
-              <div style={{ ...styles.imagePlaceholder, display: "none" }}>
+              <div className="hidden absolute inset-0 flex items-center justify-center text-gray-400 text-xs font-medium">
                 <svg
-                  style={{ width: 32, height: 32, marginRight: 8 }}
+                  className="w-8 h-8 mr-2"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -278,12 +123,14 @@ export default function ImageGallery({ refreshTrigger }) {
                 Image not available
               </div>
             </div>
-            <div style={styles.cardContent}>
-              <h4 style={styles.imageName}>{image.original_filename}</h4>
-              <div style={styles.imageInfo}>
-                <div style={styles.infoItem}>
+            <div className="p-4">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2 break-words leading-tight">
+                {image.original_filename}
+              </h4>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1 text-xs text-gray-500">
                   <svg
-                    style={styles.infoIcon}
+                    className="w-4 h-4 text-gray-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -297,9 +144,9 @@ export default function ImageGallery({ refreshTrigger }) {
                   </svg>
                   {Math.round(image.file_size / 1024)} KB
                 </div>
-                <div style={styles.infoItem}>
+                <div className="flex items-center gap-1 text-xs text-gray-500">
                   <svg
-                    style={styles.infoIcon}
+                    className="w-4 h-4 text-gray-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -313,9 +160,9 @@ export default function ImageGallery({ refreshTrigger }) {
                   </svg>
                   {image.mime_type}
                 </div>
-                <div style={styles.infoItem}>
+                <div className="flex items-center gap-1 text-xs text-gray-500">
                   <svg
-                    style={styles.infoIcon}
+                    className="w-4 h-4 text-gray-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -337,70 +184,32 @@ export default function ImageGallery({ refreshTrigger }) {
       {/* Modal for image preview */}
       {previewImage && (
         <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0,0,0,0.6)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
           onClick={() => setPreviewImage(null)}
         >
           <div
-            style={{
-              background: "#fff",
-              borderRadius: 12,
-              boxShadow: "0 4px 32px rgba(0,0,0,0.2)",
-              padding: 24,
-              maxWidth: 480,
-              width: "90vw",
-              maxHeight: "80vh",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              position: "relative",
-            }}
+            className="bg-white rounded-xl shadow-2xl p-6 max-w-lg w-[90vw] max-h-[80vh] flex flex-col items-center relative"
             onClick={(e) => e.stopPropagation()}
           >
             <img
               src={`http://localhost:8000/uploads/${previewImage.filename}`}
               alt={previewImage.original_filename}
-              style={{
-                maxWidth: "100%",
-                maxHeight: "60vh",
-                borderRadius: 8,
-                marginBottom: 16,
-              }}
+              className="max-w-full max-h-[60vh] rounded-lg mb-4"
             />
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontWeight: 600, fontSize: 16, color: "#2d4a2b" }}>
+            <div className="text-center">
+              <div className="font-semibold text-base text-gray-900 mb-1">
                 {previewImage.original_filename}
               </div>
-              <div style={{ fontSize: 14, color: "#6b7280" }}>
+              <div className="text-sm text-gray-500 mb-1">
                 {Math.round(previewImage.file_size / 1024)} KB •{" "}
                 {previewImage.mime_type}
               </div>
-              <div style={{ fontSize: 13, color: "#6b7280" }}>
+              <div className="text-xs text-gray-500">
                 {new Date(previewImage.uploaded_at).toLocaleString()}
               </div>
             </div>
             <button
-              style={{
-                marginTop: 18,
-                padding: "8px 20px",
-                background: "#22c55e",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                fontWeight: 600,
-                fontSize: 14,
-                cursor: "pointer",
-              }}
+              className="mt-4 px-5 py-2 bg-green-500 text-white rounded font-semibold text-sm hover:bg-green-600 transition-colors"
               onClick={() => setPreviewImage(null)}
             >
               Close
@@ -408,16 +217,6 @@ export default function ImageGallery({ refreshTrigger }) {
           </div>
         </div>
       )}
-      <style jsx>{`
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
     </div>
   );
 }
