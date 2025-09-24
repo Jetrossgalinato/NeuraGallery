@@ -13,157 +13,15 @@ export default function Home() {
   const [refreshGallery, setRefreshGallery] = useState(0);
 
   const handleUploadSuccess = () => {
-    // Trigger gallery refresh
     setRefreshGallery((prev) => prev + 1);
-  };
-
-  const styles = {
-    loadingContainer: {
-      padding: 48,
-      textAlign: "center",
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "#ffffff",
-    },
-    loadingText: {
-      fontSize: "18px",
-      color: "#2d4a2b",
-      fontWeight: 500,
-    },
-    authContainer: {
-      padding: "48px 24px",
-      minHeight: "100vh",
-      backgroundColor: "#ffffff",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    authContent: {
-      width: "100%",
-      maxWidth: 460,
-    },
-    brandContainer: {
-      textAlign: "center",
-      marginBottom: 36,
-    },
-    brandTitle: {
-      fontSize: "32px",
-      fontWeight: 700,
-      margin: 0,
-      marginBottom: 8,
-      color: "#2d4a2b",
-      letterSpacing: "-0.5px",
-    },
-    brandSubtitle: {
-      fontSize: "16px",
-      fontWeight: 400,
-      margin: 0,
-      color: "#6b7280",
-      letterSpacing: "0.2px",
-    },
-    switchContainer: {
-      textAlign: "center",
-      marginTop: 24,
-    },
-    switchText: {
-      color: "#2d4a2b",
-      fontSize: "14px",
-      fontWeight: 400,
-      margin: 0,
-    },
-    switchButton: {
-      background: "none",
-      border: "none",
-      color: "#f97316",
-      cursor: "pointer",
-      textDecoration: "none",
-      fontWeight: 600,
-      fontSize: "14px",
-      marginLeft: 4,
-      padding: "2px 4px",
-      borderRadius: 4,
-      transition: "color 0.2s ease",
-    },
-    switchButtonHover: {
-      color: "#ea580c",
-    },
-    dashboardContainer: {
-      minHeight: "100vh",
-      backgroundColor: "#ffffff",
-      padding: "24px",
-    },
-    dashboardContent: {
-      maxWidth: 1000,
-      margin: "0 auto",
-    },
-    header: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 32,
-      padding: "20px 0",
-      borderBottom: "1px solid #e5e5e5",
-    },
-    headerContent: {
-      flex: 1,
-    },
-    welcomeTitle: {
-      fontSize: "28px",
-      fontWeight: 700,
-      color: "#2d4a2b",
-      margin: 0,
-      marginBottom: 6,
-      letterSpacing: "-0.3px",
-    },
-    welcomeSubtitle: {
-      fontSize: "16px",
-      color: "#6b7280",
-      margin: 0,
-      fontWeight: 400,
-    },
-    logoutButton: {
-      padding: "10px 20px",
-      backgroundColor: "#f97316",
-      color: "white",
-      border: "none",
-      borderRadius: 6,
-      fontSize: "14px",
-      fontWeight: 600,
-      cursor: "pointer",
-      transition: "background-color 0.2s ease",
-      letterSpacing: "0.2px",
-    },
-    logoutButtonHover: {
-      backgroundColor: "#ea580c",
-    },
-    section: {
-      marginBottom: 24,
-      backgroundColor: "#ffffff",
-      borderRadius: 8,
-      padding: 24,
-      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-      border: "1px solid #e5e5e5",
-    },
   };
 
   if (loading) {
     return (
-      <main style={styles.loadingContainer}>
+      <main className="flex items-center justify-center min-h-screen bg-white p-12 text-center">
         <div>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              border: "2px solid #e5e5e5",
-              borderTop: "2px solid #22c55e",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              margin: "0 auto 12px",
-            }}
-          ></div>
-          <h1 style={styles.loadingText}>Loading...</h1>
+          <div className="mx-auto mb-3 w-8 h-8 border-2 border-gray-200 border-t-green-500 rounded-full animate-spin"></div>
+          <h1 className="text-lg font-semibold text-green-900">Loading...</h1>
         </div>
       </main>
     );
@@ -171,48 +29,55 @@ export default function Home() {
 
   if (!user) {
     return (
-      <main style={styles.authContainer}>
-        <div style={styles.authContent}>
-          <div style={styles.brandContainer}>
-            <h1 style={styles.brandTitle}>NeuraGallery</h1>
-            <p style={styles.brandSubtitle}>
+      <main className="flex items-center justify-center min-h-screen bg-white px-6 py-12">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-9">
+            <div className="flex items-center justify-center mb-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
+                NeuraGallery
+              </h1>
+            </div>
+            <p className="text-base text-gray-500 tracking-wide">
               AI-powered image processing and gallery
             </p>
           </div>
-
           {showRegister ? <RegisterForm /> : <LoginForm />}
-
-          <div style={styles.switchContainer}>
+          <div className="text-center mt-6">
             {showRegister ? (
-              <p style={styles.switchText}>
+              <p className="text-sm text-gray-900">
                 Already have an account?{" "}
                 <button
+                  type="button"
                   onClick={() => setShowRegister(false)}
-                  style={styles.switchButton}
-                  onMouseEnter={(e) =>
-                    Object.assign(e.target.style, styles.switchButtonHover)
-                  }
-                  onMouseLeave={(e) =>
-                    Object.assign(e.target.style, styles.switchButton)
-                  }
+                  className="text-blue-500 font-semibold py-0.5 rounded hover:text-blue-700 transition-colors underline underline-offset-2"
                 >
-                  Sign in here
+                  Log in
                 </button>
               </p>
             ) : (
-              <p style={styles.switchText}>
+              <p className="text-sm text-gray-900">
                 Don't have an account?{" "}
                 <button
+                  type="button"
                   onClick={() => setShowRegister(true)}
-                  style={styles.switchButton}
-                  onMouseEnter={(e) =>
-                    Object.assign(e.target.style, styles.switchButtonHover)
-                  }
-                  onMouseLeave={(e) =>
-                    Object.assign(e.target.style, styles.switchButton)
-                  }
+                  className="text-blue-500 font-semibold py-0.5 rounded hover:text-blue-700 transition-colors underline underline-offset-2"
                 >
-                  Create account
+                  Sign up
                 </button>
               </p>
             )}
@@ -223,48 +88,31 @@ export default function Home() {
   }
 
   return (
-    <main style={styles.dashboardContainer}>
-      <div style={styles.dashboardContent}>
-        <div style={styles.header}>
-          <div style={styles.headerContent}>
-            <h1 style={styles.welcomeTitle}>Welcome back, {user.username}!</h1>
-            <p style={styles.welcomeSubtitle}>
+    <main className="min-h-screen bg-white p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-8 py-5 border-b border-gray-200">
+          <div>
+            <h1 className="text-2xl font-bold text-green-900 mb-1 tracking-tight">
+              Welcome back, {user.username}!
+            </h1>
+            <p className="text-base text-gray-500">
               Your AI-powered image processing workspace
             </p>
           </div>
           <button
             onClick={logout}
-            style={styles.logoutButton}
-            onMouseEnter={(e) =>
-              Object.assign(e.target.style, styles.logoutButtonHover)
-            }
-            onMouseLeave={(e) =>
-              Object.assign(e.target.style, styles.logoutButton)
-            }
+            className="px-5 py-2 bg-orange-500 text-white rounded font-semibold text-sm hover:bg-orange-700 transition-colors"
           >
             Sign Out
           </button>
         </div>
-
-        <div style={styles.section}>
+        <section className="mb-6 bg-white rounded-lg p-6 shadow border border-gray-200">
           <ImageUpload onUploadSuccess={handleUploadSuccess} />
-        </div>
-
-        <div style={styles.section}>
+        </section>
+        <section className="mb-6 bg-white rounded-lg p-6 shadow border border-gray-200">
           <ImageGallery refreshTrigger={refreshGallery} />
-        </div>
+        </section>
       </div>
-
-      <style jsx>{`
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
     </main>
   );
 }
