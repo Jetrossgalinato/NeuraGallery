@@ -7,6 +7,8 @@ export default function ImageGallery({ refreshTrigger }) {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState(null);
+  // controls for preview modal - keep at top level to obey rules of hooks
+  const [zoom, setZoom] = useState(1);
 
   const fetchImages = async () => {
     try {
@@ -181,39 +183,97 @@ export default function ImageGallery({ refreshTrigger }) {
           </div>
         ))}
       </div>
-      {/* Modal for image preview */}
+      {/* Modal for image preview (fullscreen) */}
       {previewImage && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
-          onClick={() => setPreviewImage(null)}
+          className="fixed inset-0 bg-black flex items-center justify-center z-50"
+          onClick={() => {
+            setPreviewImage(null);
+            setZoom(1);
+          }}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl p-6 max-w-lg w-[90vw] max-h-[80vh] flex flex-col items-center relative"
+            className="absolute inset-0"
             onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={`http://localhost:8000/uploads/${previewImage.filename}`}
-              alt={previewImage.original_filename}
-              className="max-w-full max-h-[60vh] rounded-lg mb-4"
-            />
-            <div className="text-center">
-              <div className="font-semibold text-base text-gray-900 mb-1">
-                {previewImage.original_filename}
+          />
+
+          <div className="relative z-50 w-full h-full flex flex-col">
+            {/* top controls */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 z-60">
+              <button
+                className="px-3 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 font-semibold text-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoom((z) => Math.max(0.25, z - 0.25));
+                }}
+              >
+                -
+              </button>
+              <button
+                className="px-3 py-2 bg-gray-900 text-white rounded font-semibold text-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+              <button
+                className="px-3 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 font-semibold text-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoom((z) => Math.min(4, z + 0.25));
+                }}
+              >
+                +
+              </button>
+              <button
+                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 font-semibold text-sm ml-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // placeholder for edit flow
+                }}
+              >
+                Edit
+              </button>
+            </div>
+
+            {/* center image area */}
+            <div className="flex-1 flex items-center justify-center">
+              <img
+                src={`http://localhost:8000/uploads/${previewImage.filename}`}
+                alt={previewImage.original_filename}
+                style={{
+                  transform: `scale(${zoom})`,
+                  maxWidth: "90vw",
+                  maxHeight: "90vh",
+                  transition: "transform 0.15s ease",
+                }}
+                className="rounded-md"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+
+            {/* bottom info and close */}
+            <div className="p-6 flex items-center justify-between text-white">
+              <div>
+                <div className="font-semibold text-lg">
+                  {previewImage.original_filename}
+                </div>
+                <div className="text-sm text-gray-300">
+                  {Math.round(previewImage.file_size / 1024)} KB •{" "}
+                  {previewImage.mime_type}
+                </div>
               </div>
-              <div className="text-sm text-gray-500 mb-1">
-                {Math.round(previewImage.file_size / 1024)} KB •{" "}
-                {previewImage.mime_type}
-              </div>
-              <div className="text-xs text-gray-500">
-                {new Date(previewImage.uploaded_at).toLocaleString()}
+              <div className="flex gap-3">
+                <button
+                  className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 font-semibold"
+                  onClick={() => {
+                    setPreviewImage(null);
+                    setZoom(1);
+                  }}
+                >
+                  Close
+                </button>
               </div>
             </div>
-            <button
-              className="mt-4 px-5 py-2 bg-green-500 text-white rounded font-semibold text-sm hover:bg-green-600 transition-colors"
-              onClick={() => setPreviewImage(null)}
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
