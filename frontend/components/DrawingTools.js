@@ -13,15 +13,19 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
   const [startPoint, setStartPoint] = useState(null);
   const [currentPoint, setCurrentPoint] = useState(null);
   const [drawnShapes, setDrawnShapes] = useState([]);
+  const [shapesHistory, setShapesHistory] = useState([]); // For undo functionality
   const [showModal, setShowModal] = useState(false);
   const [selectedShapeIndex, setSelectedShapeIndex] = useState(null);
   const [isMoving, setIsMoving] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [isEditingText, setIsEditingText] = useState(false);
   const [resizeHandle, setResizeHandle] = useState(null); // tl, tr, bl, br, r (radius)
   const [moveOffset, setMoveOffset] = useState({ x: 0, y: 0 });
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
   const [mode, setMode] = useState("draw"); // "draw", "interact"
+  const [lastClickTime, setLastClickTime] = useState(0); // For detecting double-clicks
+  const [clickPosition, setClickPosition] = useState(null); // For storing click position for text
 
   // Get canvas coordinates relative to image
   const getCanvasCoordinates = (e) => {
@@ -255,8 +259,35 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
 
       if (shapeIndex !== null) {
         setSelectedShapeIndex(shapeIndex);
-
         const shape = drawnShapes[shapeIndex];
+
+        // Check if it's a double-click on a text element to edit it
+        if (shape.type === "text") {
+          const now = Date.now();
+          const isDoubleClick = now - lastClickTime < 300;
+
+          if (isDoubleClick) {
+            // Show prompt to edit text
+            const newText = prompt("Edit text:", shape.text);
+            if (newText && newText !== shape.text) {
+              // Save current state to history
+              setShapesHistory((prev) => [...prev, [...drawnShapes]]);
+
+              // Update the text
+              const updatedShapes = [...drawnShapes];
+              updatedShapes[shapeIndex] = {
+                ...shape,
+                text: newText,
+              };
+              setDrawnShapes(updatedShapes);
+              drawOnCanvas();
+            }
+            setLastClickTime(0); // Reset double-click timer
+            return;
+          }
+
+          setLastClickTime(now);
+        }
 
         // Calculate offset for moving based on shape type
         if (shape.type === "text") {
@@ -289,24 +320,41 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
 
     // Drawing mode
     if (drawingTool === "text") {
-      // For text, just set position on click
-      const text = prompt("Enter text to draw:", drawingText);
-      if (text) {
-        const newShape = {
-          type: "text",
-          text: text,
-          x: coords.x,
-          y: coords.y,
-          color: drawingColor,
-          thickness: drawingThickness,
-        };
-        setDrawnShapes((prev) => [...prev, newShape]);
+      // For text, implement a better UX with double-click support
+      const now = Date.now();
+      const lastClick = lastClickTime;
+      const isDoubleClick = now - lastClick < 300;
 
-        // Automatically select the new text element
-        setSelectedShapeIndex(drawnShapes.length);
-        setMode("interact");
+      setLastClickTime(now);
+      setClickPosition(coords);
 
-        drawOnCanvas();
+      // If double-click or if this is the first click, show prompt immediately
+      if (isDoubleClick || !clickPosition) {
+        const text = prompt("Enter text to draw:", drawingText);
+        if (text) {
+          // Save current state to history for undo
+          setShapesHistory((prev) => [...prev, [...drawnShapes]]);
+
+          const newShape = {
+            type: "text",
+            text: text,
+            x: coords.x,
+            y: coords.y,
+            color: drawingColor,
+            thickness: drawingThickness,
+          };
+
+          setDrawnShapes((prev) => [...prev, newShape]);
+
+          // Automatically select the new text element
+          setSelectedShapeIndex(drawnShapes.length);
+          setMode("interact");
+
+          drawOnCanvas();
+
+          // Reset click tracking after using
+          setClickPosition(null);
+        }
       }
       return;
     }
@@ -451,6 +499,9 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
       currentPoint &&
       (startPoint.x !== currentPoint.x || startPoint.y !== currentPoint.y)
     ) {
+      // Save current state to history before adding new shape
+      setShapesHistory((prev) => [...prev, [...drawnShapes]]);
+
       const newShape = {
         type: drawingTool,
         startX: startPoint.x,
@@ -725,6 +776,52 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
     mode,
   ]);
 
+  // Add keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Undo with Ctrl+Z or Cmd+Z
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        if (drawnShapes.length > 0) {
+          // Save current shapes to history
+          setShapesHistory((prev) => [...prev, [...drawnShapes]]);
+
+          // Remove last shape
+          const newShapes = drawnShapes.slice(0, -1);
+          setDrawnShapes(newShapes);
+
+          // Clear selection if the selected shape was removed
+          if (selectedShapeIndex === drawnShapes.length - 1) {
+            setSelectedShapeIndex(null);
+          }
+        }
+      }
+
+      // Redo with Ctrl+Shift+Z or Cmd+Shift+Z or Ctrl+Y
+      if (
+        ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) ||
+        ((e.ctrlKey || e.metaKey) && e.key === "y")
+      ) {
+        e.preventDefault();
+        if (shapesHistory.length > 0) {
+          // Get the last state from history
+          const lastState = shapesHistory[shapesHistory.length - 1];
+
+          // Restore that state
+          setDrawnShapes(lastState);
+
+          // Remove it from history
+          setShapesHistory((prev) => prev.slice(0, -1));
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [drawnShapes, shapesHistory, selectedShapeIndex]);
+
   // Function to open the confirmation modal
   const showConfirmationModal = () => {
     if (drawnShapes.length === 0) {
@@ -906,10 +1003,16 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
   };
 
   const clearCanvas = () => {
+    // Save current state to history before clearing
+    if (drawnShapes.length > 0) {
+      setShapesHistory((prev) => [...prev, [...drawnShapes]]);
+    }
+
     setDrawnShapes([]);
     setIsDrawing(false);
     setStartPoint(null);
     setCurrentPoint(null);
+    setSelectedShapeIndex(null);
   };
 
   return (
@@ -986,9 +1089,9 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
         />
       </div>
 
-      {/* Mode Toggle */}
+      {/* Mode Toggle and Undo/Redo Buttons */}
       <div className="flex justify-center mb-3">
-        <div className="bg-gray-800 p-1 rounded-lg flex">
+        <div className="bg-gray-800 p-1 rounded-lg flex items-center space-x-2">
           <button
             onClick={() => setMode("draw")}
             className={`px-4 py-2 rounded-lg ${
@@ -1008,6 +1111,50 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
             }`}
           >
             Edit 🖐️
+          </button>
+          {/* Undo/Redo Buttons */}
+          <button
+            onClick={() => {
+              if (drawnShapes.length > 0) {
+                // Save current shapes to history
+                setShapesHistory((prev) => [...prev, [...drawnShapes]]);
+
+                // Remove last shape
+                const newShapes = drawnShapes.slice(0, -1);
+                setDrawnShapes(newShapes);
+
+                // Clear selection if it was the last shape
+                if (selectedShapeIndex === drawnShapes.length - 1) {
+                  setSelectedShapeIndex(null);
+                }
+              }
+            }}
+            disabled={drawnShapes.length === 0}
+            className="ml-4 px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 text-sm flex items-center"
+            title="Undo (Ctrl+Z)"
+          >
+            <span className="mr-1">↩️</span>
+            Undo
+          </button>
+          <button
+            onClick={() => {
+              if (shapesHistory.length > 0) {
+                // Get the last state from history
+                const lastState = shapesHistory[shapesHistory.length - 1];
+
+                // Restore that state
+                setDrawnShapes(lastState);
+
+                // Remove it from history
+                setShapesHistory((prev) => prev.slice(0, -1));
+              }
+            }}
+            disabled={shapesHistory.length === 0}
+            className="px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 text-sm flex items-center"
+            title="Redo (Ctrl+Y or Ctrl+Shift+Z)"
+          >
+            <span className="mr-1">↪️</span>
+            Redo
           </button>
         </div>
       </div>
@@ -1095,12 +1242,35 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
           <div className="text-xs text-gray-400 bg-gray-800 rounded p-2">
             <div className="flex items-center justify-between">
               <span>{drawnShapes.length} shape(s) drawn</span>
-              <button
-                onClick={clearCanvas}
-                className="text-red-400 hover:text-red-300 text-xs underline"
-              >
-                Clear All
-              </button>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => {
+                    if (drawnShapes.length > 0) {
+                      // Save current shapes to history
+                      setShapesHistory((prev) => [...prev, [...drawnShapes]]);
+
+                      // Remove last shape
+                      const newShapes = drawnShapes.slice(0, -1);
+                      setDrawnShapes(newShapes);
+
+                      // Clear selection if it was the last shape
+                      if (selectedShapeIndex === drawnShapes.length - 1) {
+                        setSelectedShapeIndex(null);
+                      }
+                    }
+                  }}
+                  disabled={drawnShapes.length === 0}
+                  className="text-blue-400 hover:text-blue-300 text-xs underline disabled:text-gray-600 disabled:cursor-not-allowed"
+                >
+                  Undo
+                </button>
+                <button
+                  onClick={clearCanvas}
+                  className="text-red-400 hover:text-red-300 text-xs underline"
+                >
+                  Clear All
+                </button>
+              </div>
             </div>
           </div>
         )}
