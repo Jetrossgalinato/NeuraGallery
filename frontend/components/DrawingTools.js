@@ -4,17 +4,33 @@ import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 
 export default function DrawingTools({ image, onProcessed, onClose }) {
+  // OpenCV font styles available
+  const fontStyles = [
+    { value: "HERSHEY_SIMPLEX", label: "Simple" },
+    { value: "HERSHEY_PLAIN", label: "Plain" },
+    { value: "HERSHEY_DUPLEX", label: "Duplex" },
+    { value: "HERSHEY_COMPLEX", label: "Complex" },
+    { value: "HERSHEY_TRIPLEX", label: "Triplex" },
+    { value: "HERSHEY_COMPLEX_SMALL", label: "Complex Small" },
+    { value: "HERSHEY_SCRIPT_SIMPLEX", label: "Script Simple" },
+    { value: "HERSHEY_SCRIPT_COMPLEX", label: "Script Complex" },
+  ];
+
   const [processing, setProcessing] = useState(false);
   const [drawingTool, setDrawingTool] = useState("line");
   const [drawingColor, setDrawingColor] = useState("#FF0000");
   const [drawingThickness, setDrawingThickness] = useState(2);
   const [drawingText, setDrawingText] = useState("Sample Text");
+  const [fontStyle, setFontStyle] = useState("HERSHEY_SIMPLEX");
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState(null);
   const [currentPoint, setCurrentPoint] = useState(null);
   const [drawnShapes, setDrawnShapes] = useState([]);
   const [shapesHistory, setShapesHistory] = useState([]); // For undo functionality
   const [showModal, setShowModal] = useState(false);
+  const [showTextModal, setShowTextModal] = useState(false);
+  const [textInput, setTextInput] = useState("");
+  const [pendingTextPosition, setPendingTextPosition] = useState(null);
   const [selectedShapeIndex, setSelectedShapeIndex] = useState(null);
   const [isMoving, setIsMoving] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -67,8 +83,9 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
 
   // Check if point is near text (using a proximity threshold)
   const isPointNearText = (point, shape) => {
-    const textWidth = shape.thickness * 10 * shape.text.length * 0.6;
-    const textHeight = shape.thickness * 10;
+    const actualFontSize = getActualFontSize(shape.thickness);
+    const textWidth = actualFontSize * shape.text.length * 0.6;
+    const textHeight = actualFontSize;
 
     return (
       point.x >= shape.x &&
@@ -222,8 +239,9 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
       }
     } else if (shape.type === "text") {
       // Resize handle in the bottom-right for text
-      const textWidth = shape.thickness * 10 * shape.text.length * 0.6;
-      const textHeight = shape.thickness * 10;
+      const actualFontSize = getActualFontSize(shape.thickness);
+      const textWidth = actualFontSize * shape.text.length * 0.6;
+      const textHeight = actualFontSize;
 
       if (
         Math.sqrt(
@@ -267,21 +285,10 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
           const isDoubleClick = now - lastClickTime < 300;
 
           if (isDoubleClick) {
-            // Show prompt to edit text
-            const newText = prompt("Edit text:", shape.text);
-            if (newText && newText !== shape.text) {
-              // Save current state to history
-              setShapesHistory((prev) => [...prev, [...drawnShapes]]);
-
-              // Update the text
-              const updatedShapes = [...drawnShapes];
-              updatedShapes[shapeIndex] = {
-                ...shape,
-                text: newText,
-              };
-              setDrawnShapes(updatedShapes);
-              drawOnCanvas();
-            }
+            // Show modal to edit text
+            setTextInput(shape.text);
+            setPendingTextPosition({ type: "edit", shapeIndex });
+            setShowTextModal(true);
             setLastClickTime(0); // Reset double-click timer
             return;
           }
@@ -320,42 +327,10 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
 
     // Drawing mode
     if (drawingTool === "text") {
-      // For text, implement a better UX with double-click support
-      const now = Date.now();
-      const lastClick = lastClickTime;
-      const isDoubleClick = now - lastClick < 300;
-
-      setLastClickTime(now);
-      setClickPosition(coords);
-
-      // If double-click or if this is the first click, show prompt immediately
-      if (isDoubleClick || !clickPosition) {
-        const text = prompt("Enter text to draw:", drawingText);
-        if (text) {
-          // Save current state to history for undo
-          setShapesHistory((prev) => [...prev, [...drawnShapes]]);
-
-          const newShape = {
-            type: "text",
-            text: text,
-            x: coords.x,
-            y: coords.y,
-            color: drawingColor,
-            thickness: drawingThickness,
-          };
-
-          setDrawnShapes((prev) => [...prev, newShape]);
-
-          // Automatically select the new text element
-          setSelectedShapeIndex(drawnShapes.length);
-          setMode("interact");
-
-          drawOnCanvas();
-
-          // Reset click tracking after using
-          setClickPosition(null);
-        }
-      }
+      // Place a text box at the tapped position and immediately select it for moving/resizing
+      setTextInput(drawingText);
+      setPendingTextPosition({ type: "new", coords });
+      setShowTextModal(true);
       return;
     }
 
@@ -404,14 +379,16 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
       } else if (shape.type === "text") {
         if (resizeHandle === "br") {
           // Resize text by changing thickness based on drag distance
-          const origTextWidth = shape.thickness * 10 * shape.text.length * 0.6;
+          const actualFontSize = getActualFontSize(shape.thickness);
+          const origTextWidth = actualFontSize * shape.text.length * 0.6;
           const newWidth = coords.x - shape.x;
 
           if (newWidth > 0) {
-            // Calculate new thickness based on width
+            // Calculate new thickness based on width (new range 1-41 for 10-50px)
+            const newFontSize = newWidth / (shape.text.length * 0.6);
             const newThickness = Math.max(
               1,
-              Math.min(5, newWidth / (shape.text.length * 0.6) / 10)
+              Math.min(41, getThicknessFromFontSize(newFontSize))
             );
             shape.thickness = newThickness;
           }
@@ -685,13 +662,29 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
           ctx.restore();
         }
       } else if (shape.type === "text") {
-        ctx.font = `${shape.thickness * 10}px Arial`;
+        // Map OpenCV font styles to CSS font families (approximate)
+        const fontStyleMap = {
+          HERSHEY_SIMPLEX: "Arial, sans-serif",
+          HERSHEY_PLAIN: "Arial, sans-serif",
+          HERSHEY_DUPLEX: "Arial, sans-serif",
+          HERSHEY_COMPLEX: "Times, serif",
+          HERSHEY_TRIPLEX: "Times, serif",
+          HERSHEY_COMPLEX_SMALL: "Times, serif",
+          HERSHEY_SCRIPT_SIMPLEX: "cursive",
+          HERSHEY_SCRIPT_COMPLEX: "cursive",
+        };
+
+        const fontFamily =
+          fontStyleMap[shape.fontStyle || "HERSHEY_SIMPLEX"] ||
+          "Arial, sans-serif";
+        const actualFontSize = getActualFontSize(shape.thickness);
+        ctx.font = `${actualFontSize}px ${fontFamily}`;
         ctx.fillText(shape.text, shape.x, shape.y);
 
         // Draw selection handles if selected
         if (isSelected) {
-          const textWidth = shape.thickness * 10 * shape.text.length * 0.6;
-          const textHeight = shape.thickness * 10;
+          const textWidth = actualFontSize * shape.text.length * 0.6;
+          const textHeight = actualFontSize;
 
           // Draw selection outline
           ctx.save();
@@ -883,6 +876,7 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
           params.append("start_y", shape.y.toString());
           params.append("text", shape.text);
           params.append("font_size", "1.0");
+          params.append("font_style", shape.fontStyle || "HERSHEY_SIMPLEX");
         } else {
           params.append("start_x", shape.startX.toString());
           params.append("start_y", shape.startY.toString());
@@ -1002,6 +996,121 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
     showConfirmationModal();
   };
 
+  // Handle text input submission
+  const handleTextSubmit = () => {
+    if (!textInput.trim() || !pendingTextPosition) return;
+
+    if (pendingTextPosition.type === "new") {
+      // Create new text shape
+      setShapesHistory((prev) => [...prev, [...drawnShapes]]);
+      const newShape = {
+        type: "text",
+        text: textInput,
+        x: pendingTextPosition.coords.x,
+        y: pendingTextPosition.coords.y,
+        color: drawingColor,
+        thickness: drawingThickness,
+        fontStyle: fontStyle,
+      };
+      setDrawnShapes((prev) => {
+        const arr = [...prev, newShape];
+        setSelectedShapeIndex(arr.length - 1);
+        setMode("interact");
+        return arr;
+      });
+    } else if (pendingTextPosition.type === "edit") {
+      // Edit existing text shape
+      const shapeIndex = pendingTextPosition.shapeIndex;
+      const shape = drawnShapes[shapeIndex];
+
+      if (textInput !== shape.text) {
+        setShapesHistory((prev) => [...prev, [...drawnShapes]]);
+        const updatedShapes = [...drawnShapes];
+        updatedShapes[shapeIndex] = {
+          ...shape,
+          text: textInput,
+        };
+        setDrawnShapes(updatedShapes);
+      }
+    }
+
+    // Reset modal state
+    setShowTextModal(false);
+    setTextInput("");
+    setPendingTextPosition(null);
+  };
+
+  // Handle text input cancellation
+  const handleTextCancel = () => {
+    setShowTextModal(false);
+    setTextInput("");
+    setPendingTextPosition(null);
+  };
+
+  // Handle font size change for selected text
+  const handleFontSizeChange = (newThickness) => {
+    setDrawingThickness(newThickness);
+
+    // If a text shape is selected, update it in real-time
+    if (
+      selectedShapeIndex !== null &&
+      drawnShapes[selectedShapeIndex]?.type === "text"
+    ) {
+      const updatedShapes = [...drawnShapes];
+      updatedShapes[selectedShapeIndex] = {
+        ...updatedShapes[selectedShapeIndex],
+        thickness: newThickness,
+      };
+      setDrawnShapes(updatedShapes);
+    }
+  };
+
+  // Convert thickness value to actual font size (10px to 50px)
+  const getActualFontSize = (thickness) => {
+    return thickness + 9; // Convert 1-41 to 10-50px
+  };
+
+  // Convert actual font size back to thickness value
+  const getThicknessFromFontSize = (fontSize) => {
+    return fontSize - 9; // Convert 10-50px to 1-41
+  };
+
+  // Handle font style change for selected text
+  const handleFontStyleChange = (newFontStyle) => {
+    setFontStyle(newFontStyle);
+
+    // If a text shape is selected, update it in real-time
+    if (
+      selectedShapeIndex !== null &&
+      drawnShapes[selectedShapeIndex]?.type === "text"
+    ) {
+      const updatedShapes = [...drawnShapes];
+      updatedShapes[selectedShapeIndex] = {
+        ...updatedShapes[selectedShapeIndex],
+        fontStyle: newFontStyle,
+      };
+      setDrawnShapes(updatedShapes);
+    }
+  };
+
+  // Add useEffect to update slider when text shape is selected
+  useEffect(() => {
+    if (
+      selectedShapeIndex !== null &&
+      drawnShapes[selectedShapeIndex]?.type === "text"
+    ) {
+      // Update slider to reflect the selected text's font size
+      const selectedShape = drawnShapes[selectedShapeIndex];
+      if (selectedShape.thickness !== drawingThickness) {
+        setDrawingThickness(selectedShape.thickness);
+      }
+      // Update font style to match selected text
+      if (selectedShape.fontStyle && selectedShape.fontStyle !== fontStyle) {
+        setFontStyle(selectedShape.fontStyle);
+      }
+    }
+  }, [selectedShapeIndex, drawnShapes]);
+
   const clearCanvas = () => {
     // Save current state to history before clearing
     if (drawnShapes.length > 0) {
@@ -1049,6 +1158,53 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
                 disabled={processing}
               >
                 Create Copy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Text Input Modal */}
+      {showTextModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3 className="text-lg font-medium text-white">
+                {pendingTextPosition?.type === "edit"
+                  ? "Edit Text"
+                  : "Add Text"}
+              </h3>
+            </div>
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleTextSubmit();
+                  } else if (e.key === "Escape") {
+                    handleTextCancel();
+                  }
+                }}
+                placeholder="Enter text..."
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm focus:border-blue-400 focus:outline-none"
+                autoFocus
+              />
+            </div>
+            <div className="modal-actions">
+              <button
+                onClick={handleTextCancel}
+                className="modal-button modal-button-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTextSubmit}
+                disabled={!textInput.trim()}
+                className="modal-button modal-button-primary"
+              >
+                {pendingTextPosition?.type === "edit" ? "Update" : "Add"} Text
               </button>
             </div>
           </div>
@@ -1208,34 +1364,50 @@ export default function DrawingTools({ image, onProcessed, onClose }) {
             </label>
             <span className="text-xs text-gray-400">
               {drawingTool === "text"
-                ? `${drawingThickness * 10}px`
+                ? `${getActualFontSize(drawingThickness)}px`
                 : `${drawingThickness}px`}
             </span>
           </div>
           <input
             type="range"
             min="1"
-            max={drawingTool === "text" ? "5" : "20"}
+            max={drawingTool === "text" ? "41" : "20"}
             value={drawingThickness}
-            onChange={(e) => setDrawingThickness(parseInt(e.target.value))}
+            onChange={(e) => handleFontSizeChange(parseInt(e.target.value))}
             className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
           />
         </div>
 
         {drawingTool === "text" && (
-          <div className="space-y-2">
-            <label className="text-sm text-gray-300">Default Text</label>
-            <input
-              type="text"
-              value={drawingText}
-              onChange={(e) => setDrawingText(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm focus:border-blue-400 focus:outline-none"
-              placeholder="Enter default text"
-            />
-            <p className="text-xs text-gray-500">
-              Click on the image to place text (you can edit it when clicking)
-            </p>
-          </div>
+          <>
+            <div className="space-y-2">
+              <label className="text-sm text-gray-300">Font Style</label>
+              <select
+                value={fontStyle}
+                onChange={(e) => handleFontStyleChange(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm focus:border-blue-400 focus:outline-none"
+              >
+                {fontStyles.map((font) => (
+                  <option key={font.value} value={font.value}>
+                    {font.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-gray-300">Default Text</label>
+              <input
+                type="text"
+                value={drawingText}
+                onChange={(e) => setDrawingText(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm focus:border-blue-400 focus:outline-none"
+                placeholder="Enter default text"
+              />
+              <p className="text-xs text-gray-500">
+                Click on the image to place text (you can edit it when clicking)
+              </p>
+            </div>
+          </>
         )}
 
         {drawnShapes.length > 0 && (

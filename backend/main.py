@@ -604,6 +604,7 @@ async def draw_on_image(
     thickness: int = 2,
     text: str = None,
     font_size: float = 1.0,
+    font_style: str = "HERSHEY_SIMPLEX",
     create_copy: bool = Query(True, description="Whether to create a copy or update the original image"),
     current_user = Depends(get_current_user)
 ):
@@ -644,8 +645,23 @@ async def draw_on_image(
         elif shape_type == "circle" and radius is not None:
             cv2.circle(target_image, (start_x, start_y), radius, color, thickness)
         elif shape_type == "text" and text is not None:
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(target_image, text, (start_x, start_y), font, font_size, color, thickness)
+            # Convert thickness to actual font size (10-50px range)
+            actual_font_size = (thickness + 9) / 10.0  # Convert 1-41 to 1.0-5.0 for OpenCV
+            
+            # Map font style string to OpenCV font constant
+            font_map = {
+                "HERSHEY_SIMPLEX": cv2.FONT_HERSHEY_SIMPLEX,
+                "HERSHEY_PLAIN": cv2.FONT_HERSHEY_PLAIN,
+                "HERSHEY_DUPLEX": cv2.FONT_HERSHEY_DUPLEX,
+                "HERSHEY_COMPLEX": cv2.FONT_HERSHEY_COMPLEX,
+                "HERSHEY_TRIPLEX": cv2.FONT_HERSHEY_TRIPLEX,
+                "HERSHEY_COMPLEX_SMALL": cv2.FONT_HERSHEY_COMPLEX_SMALL,
+                "HERSHEY_SCRIPT_SIMPLEX": cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
+                "HERSHEY_SCRIPT_COMPLEX": cv2.FONT_HERSHEY_SCRIPT_COMPLEX,
+            }
+            
+            font = font_map.get(font_style, cv2.FONT_HERSHEY_SIMPLEX)
+            cv2.putText(target_image, text, (start_x, start_y), font, actual_font_size, color, thickness)
         else:
             raise HTTPException(status_code=400, detail="Invalid shape type or missing parameters")
         
@@ -696,7 +712,8 @@ async def draw_on_image(
                 "color": [color_r, color_g, color_b],
                 "thickness": thickness,
                 "text": text,
-                "font_size": font_size
+                "font_size": font_size,
+                "font_style": font_style
             }
         }
     except Exception as e:
